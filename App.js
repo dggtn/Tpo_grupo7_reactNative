@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 export default function App() {
   return (
     <View style={styles.container}>
-      <Text>GYM APP!</Text>
+      <Text style={styles.container}>GYM APP!</Text>
       <StatusBar style="auto" />
     </View>
   );
@@ -12,9 +12,15 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
+    flex: 3,
+    backgroundColor: '#2213afff',
+    color: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
+    fontSize: 30,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    padding: 20,
+    marginTop: 50,
   },
 });
