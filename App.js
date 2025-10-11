@@ -1,13 +1,27 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import {createStaticNavigation} from '@react-navigation/native';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import CursosScreen from './gymApp/screens/cursosScreen';
+import DetalleCurso from './gymApp/screens/detalleCursoScreen';
+import HomeScreen from './gymApp/screens/homeScreen';
+import { StyleSheet } from 'react-native';
+const screens = createNativeStackNavigator({
+  screens: {
+    Welcome: {
+      screen: HomeScreen
+    },
+    Cursos: {
+      screen: CursosScreen
+    },
+    DetalleCurso: {
+      screen: DetalleCurso
+    }
+  }
+})
+
+const Navigation = createStaticNavigation(screens)
 
 export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.container}>GYM APP!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
+  return <Navigation/>
 }
 
 const styles = StyleSheet.create({
@@ -23,5 +37,6 @@ const styles = StyleSheet.create({
     padding: 20,
     marginTop: 50,
     marginBottom: 50,
+    flexDirection: 'column',  
   },
 });
