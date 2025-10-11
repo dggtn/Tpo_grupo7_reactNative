@@ -4,26 +4,21 @@ import {useNavigation} from '@react-navigation/native';
 
 export default function CursosScreen() {
     const navigation = useNavigation()
-    // const token = process.env.EXPO_PUBLIC_API_TOKEN
-    // const url = process.env.EXPO_PUBLIC_API_URL
+    const url = process.env.EXPO_PUBLIC_API_URL
 
     const [isLoading, setLoading] = useState(true)
     const [cursos, setCursos] = useState([])
 
     const getCursos = async () => {
         try {
-            const response =  await fetch(url + '/courses/initializeCourses"', {
-                method: 'GET',
-                headers: {
-                    // 'X-Api-Key': token
-                }
+            const response =  await fetch(url + '/courses/allCourses', {
+                method: 'GET'
             })
 
             const json = await response.json()
-            console.log(json)
-            setCursos(json)
+            setCursos(json.data)
         } catch(error) {
-            console.log(error)
+            console.log("ERROR, ", error)
         } finally {
             setLoading(false)
         }
@@ -46,7 +41,7 @@ export default function CursosScreen() {
             ) : (
                 <FlatList
                     data={cursos}
-                    renderItem={({item}) => <Curso cursoName={item.name} onPress={() => navigation.navigate('DetalleCurso', {curso: item.name})}/> }
+                    renderItem={({item}) => <Curso cursoName={item.name} onPress={() => navigation.navigate('DetalleCurso', {idCurso: item.id})}/> }
                     keyExtractor={item => item.id}
                 />
             )}

@@ -3,27 +3,22 @@ import { useEffect, useState } from 'react';
 
 export default function DetalleCurso({route}) {
 
-    // const token = process.env.EXPO_PUBLIC_API_TOKEN
-    // const url = process.env.EXPO_PUBLIC_API_URL
+    const url = process.env.EXPO_PUBLIC_API_URL
+
 
     const [isLoading, setLoading] = useState(true)
-    const [questions, setQuestions] = useState([])
+    const [detalleCursos, setDetalleCursos] = useState({})
 
-    const curso = route.params.curso
+    const idCurso = route.params.idCurso
 
-    const getDetalleCurso = async (curso) => {
-        console.log(curso)
+    const getDetalleCurso = async (idCurso) => {
         try {
-            const response =  await fetch(url + '/questions?category=' + curso, {
+            const response =  await fetch(url + '/courses/' + idCurso, {
                 method: 'GET',
-                headers: {
-                    'X-Api-Key': token
-                }
             })
 
             const json = await response.json()
-            setQuestions(json)
-
+            setDetalleCursos(json.data)
         } catch(error) {
             console.log(error)
         } finally {
@@ -33,23 +28,23 @@ export default function DetalleCurso({route}) {
     }
 
     useEffect(() => {
-        getDetalleCurso(curso)
+        getDetalleCurso(idCurso)
     }, [])
 
-    const CurrentCurso = () => {
-        const [index, setIndex] = useState(0)
-        return (
-            <View>
-                <Text>{questions[index].question}</Text>
-            </View>
-        )
-    }
     return (
         <View>
             {isLoading ? (
                 <ActivityIndicator/>
             ) : (
-                <CurrentQuestion/>
+                <View>
+                    <Text>{detalleCursos.name}</Text>
+                    <Text>{detalleCursos.sportName.sportType}</Text>
+                    <Text>{detalleCursos.fechaInicio}</Text>
+                    <Text>{detalleCursos.fechaFin}</Text>
+                    <Text>{detalleCursos.length}</Text>
+                    <Text>{detalleCursos.price}</Text>
+                    <Text>{detalleCursos.teachers.name}</Text>
+                </View>
             )}
         </View>
     )
