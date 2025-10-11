@@ -22,8 +22,9 @@ const Navigation = createStaticNavigation(screens)
 
 export default function App() {
   return (
-      <Navigation/>
-   
+    <PaperProvider>
+     <Navigation/>
+    </PaperProvider>
   );
 }
 
