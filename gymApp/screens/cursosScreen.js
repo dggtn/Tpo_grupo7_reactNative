@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, FlatList, StyleSheet, StatusBar, TouchableOpacity} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import { useTheme } from 'react-native-paper';
 
 export default function CursosScreen() {
     const navigation = useNavigation()
