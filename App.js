@@ -3,7 +3,8 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import CursosScreen from './gymApp/screens/cursosScreen';
 import DetalleCurso from './gymApp/screens/detalleCursoScreen';
 import HomeScreen from './gymApp/screens/homeScreen';
-import { StyleSheet,View } from 'react-native';
+import { PaperProvider } from 'react-native-paper';
+import Footer from './gymApp/screens/footer';
 const screens = createNativeStackNavigator({
   screens: {
     Welcome: {
@@ -23,7 +24,7 @@ const Navigation = createStaticNavigation(screens)
 export default function App() {
   return (
     <PaperProvider>
-     <Navigation/>
+     <Navigation />
     </PaperProvider>
   );
 }
