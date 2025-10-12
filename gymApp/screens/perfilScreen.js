@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, FlatList, StyleSheet, StatusBar, TouchableOpacity} from 'react-native';
+import { View, Text,StyleSheet} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import { useTheme } from 'react-native-paper';
 
@@ -25,7 +25,8 @@ export default function PerfilScreen() {
         }
     }
     return (
-        <View>
+        <View style={styles.container}>
+          <Text style={styles.title}>MI PERFIL</Text>
             <Text>{usuario.name}</Text>
         </View>
     )
@@ -34,15 +35,18 @@ export default function PerfilScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: StatusBar.currentHeight || 0,
-  },
-  item: {
-    backgroundColor: '#f9c2ff',
+    backgroundColor: '#b35cbdff',
     padding: 20,
     marginVertical: 8,
     marginHorizontal: 16,
+    fontSize: 32,
   },
   title: {
     fontSize: 32,
-  },
+    fontWeight: "bold",
+    fontStyle: "italic",
+    textAlign: "center",
+    marginBottom: 20,
+    color: "#fff",
+  }
 });
