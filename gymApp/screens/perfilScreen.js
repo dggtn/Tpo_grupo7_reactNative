@@ -3,7 +3,7 @@ import { View, Text, ActivityIndicator, FlatList, StyleSheet, StatusBar, Touchab
 import {useNavigation} from '@react-navigation/native';
 import { useTheme } from 'react-native-paper';
 
-export default function perfilScreen() {
+export default function PerfilScreen() {
     const navigation = useNavigation()
     const url = process.env.EXPO_PUBLIC_API_URL
 

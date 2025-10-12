@@ -1,34 +1,67 @@
-import { StyleSheet, Text, View, Button } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
+import { View, Text, ActivityIndicator, FlatList, StyleSheet, StatusBar, TouchableOpacity} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import { useTheme } from 'react-native-paper';
 
-export default function WelcomeScreen() {
+export default function homeScreen() {
     const navigation = useNavigation()
+    const url = process.env.EXPO_PUBLIC_API_URL
+
+    const [isLoading, setLoading] = useState(true)
+    const [cursos, setCursos] = useState([])
+
+    const getCursos = async () => {
+        try {
+            const response =  await fetch(url + '/courses/allCourses', {
+                method: 'GET'
+            })
+
+            const json = await response.json()
+            setCursos(json.data)
+        } catch(error) {
+            console.log("ERROR, ", error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        getCursos()        
+    }, [])
+
+    const Curso = ({cursoName, onPress}) => (
+        <TouchableOpacity style={styles.item} onPress={onPress}>
+            <Text style={styles.title}>{cursoName}</Text>
+        </TouchableOpacity>
+    )
+
     return (
-        <View style={styles.container}>
-            <Text>Bienvenido a gym app!</Text>
-            <View style={styles.pt8}>
-                <Button
-                    style={styles.pt8}
-                    title="Iniciar"
-                    onPress={() => 
-                        navigation.navigate('Cursos')
-                    }
+        <View>
+            {isLoading ? (
+                <ActivityIndicator />
+            ) : (
+                <FlatList
+                    data={cursos}
+                    renderItem={({item}) => <Curso cursoName={item.name} onPress={() => navigation.navigate('DetalleCurso', {idCurso: item.id})}/> }
+                    keyExtractor={item => item.id}
                 />
-            </View>
-            <StatusBar style="auto" />
+            )}
         </View>
-    );
+    )
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    pt8: {
-        paddingTop: 24
-    }
+  container: {
+    flex: 1,
+    marginTop: StatusBar.currentHeight || 0,
+  },
+  item: {
+    backgroundColor: '#f9c2ff',
+    padding: 20,
+    marginVertical: 8,
+    marginHorizontal: 16,
+  },
+  title: {
+    fontSize: 32,
+  },
 });

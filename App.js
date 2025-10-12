@@ -1,32 +1,60 @@
-import {createStaticNavigation} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import CursosScreen from './gymApp/screens/cursosScreen';
-import DetalleCurso from './gymApp/screens/detalleCursoScreen';
-import HomeScreen from './gymApp/screens/homeScreen';
-import { PaperProvider } from 'react-native-paper';
-import Footer from './gymApp/screens/footer';
-const screens = createNativeStackNavigator({
-  screens: {
-    Welcome: {
-      screen: HomeScreen
-    },
-    Cursos: {
-      screen: CursosScreen
-    },
-    DetalleCurso: {
-      screen: DetalleCurso
-    }
-  }
-})
+import { NavigationContainer } from "@react-navigation/native";
+import HomeScreen from "./gymApp/screens/HomeScreen";
+import { PaperProvider } from "react-native-paper";
+import MaterialDesignIcons from "@react-native-vector-icons/material-design-icons";
+import PerfilScreen from "./gymApp/screens/PerfilScreen";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
-const Navigation = createStaticNavigation(screens)
+import DetalleCursoScreen from "./gymApp/screens/DetalleCursoScreen";
 
-export default function App() {
+const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+function Home() {
   return (
-    <PaperProvider>
-     <Navigation />
-    </PaperProvider>
+    <Tab.Navigator>
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          tabBarIcon: ({ color }) => (
+            <MaterialDesignIcons name="home" color={color} size={30} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Perfil"
+        component={PerfilScreen}
+        options={{
+          tabBarIcon: ({ color }) => (
+            <MaterialDesignIcons name="account" color={color} size={30} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
-;
+function Navegaciones() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="Home"
+        component={Home}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen name="DetalleCurso" component={DetalleCursoScreen} />
+    </Stack.Navigator>
+  );
+}
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <PaperProvider>
+        <Navegaciones />
+      </PaperProvider>
+    </NavigationContainer>
+  );
+}

@@ -1,7 +1,7 @@
 import { ActivityIndicator, Text, View, StyleSheet, StatusBar } from "react-native";
 import { useEffect, useState } from 'react';
 
-export default function DetalleCurso({route}) {
+export default function DetalleCursoScreen({route}) {
 
     const url = process.env.EXPO_PUBLIC_API_URL
 
