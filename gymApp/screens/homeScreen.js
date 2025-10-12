@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useTheme } from "react-native-paper";
 import CarouselComponent from "./carousel";
 
 export default function homeScreen() {
@@ -83,8 +82,13 @@ const styles = StyleSheet.create({
     padding: 20,
     marginVertical: 8,
     marginHorizontal: 16,
+    borderRadius: 10,
   },
   title: {
-    fontSize: 32,
+    fontSize: 32, borderRadius: 10,
+    justifyContent: "center",
+    fontWeight: "bold",
+    fontStyle: "italic",    
+    alignItems: "center",
   },
 });

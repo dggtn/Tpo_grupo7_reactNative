@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 import DetalleCursoScreen from "./gymApp/screens/DetalleCursoScreen";
+import { Background } from "@react-navigation/elements";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();

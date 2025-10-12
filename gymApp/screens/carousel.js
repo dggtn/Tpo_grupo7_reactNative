@@ -3,15 +3,15 @@ const { width: windowWidth } = Dimensions.get("window");
 const ITEM_WIDTH = windowWidth * 0.8;
 
 const data = [
-  { id: "1", text: "Ahora tus clases empiezan mas temprano" },
-  { id: "2", text: "PROMO 2X1" },
-  { id: "3", text: "Semana del amigo" },
+  { id: "1", text: "Ahora tus clases empiezan mas temprano", styles: { fontSize: 30, fontWeight: "bold", fontStyle: "italic", color: "#fff" } },
+  { id: "2", text: "PROMO 2X1", styles: { fontSize: 30, fontWeight: "bold", fontStyle: "italic", color: "#fff" } },
+  { id: "3", text: "Semana del amigo", styles: { fontSize: 30, fontWeight: "bold", fontStyle: "italic", color: "#fff" } },
 ];
 
 const CarouselComponent = () => {
   const renderItem = ({ item }) => (
     <View style={styles.itemContainer}>
-      <Text style={styles.itemText}>{item.text}</Text>
+      <Text style={item.styles} >{item.text}</Text>
     </View>
   );
 
@@ -37,7 +37,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#7dad95ff",
     borderRadius: 10,
     justifyContent: "center",
-    fontSize: 150,
     fontWeight: "bold",
     fontStyle: "italic",    
     alignItems: "center",
@@ -45,11 +44,6 @@ const styles = StyleSheet.create({
     contentContainer: {
       paddingHorizontal: windowWidth * 0.1,
       borderRadius: 10,
-      fontSize: 150,
-      fontWeight: "bold",
-      fontStyle: "italic",
-      color: "#fff",
-      textAlign: "center",
     },
   },
 });

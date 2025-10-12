@@ -27,7 +27,8 @@ export default function PerfilScreen() {
     return (
         <View style={styles.container}>
           <Text style={styles.title}>MI PERFIL</Text>
-            <Text>{usuario.name}</Text>
+            <Text style={styles.subtitle}>Nombre: {usuario.name}</Text>
+            <Text style={styles.subtitle}>Mail: {usuario.email}</Text>
         </View>
     )
 }
@@ -40,12 +41,20 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     marginHorizontal: 16,
     fontSize: 32,
+    borderRadius: 10,
   },
   title: {
     fontSize: 32,
     fontWeight: "bold",
     fontStyle: "italic",
     textAlign: "center",
+    marginBottom: 20,
+    color: "#fff",
+  },
+    subtitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    fontStyle: "italic",
     marginBottom: 20,
     color: "#fff",
   }
