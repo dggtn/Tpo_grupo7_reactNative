@@ -1,13 +1,7 @@
-import {
-  ActivityIndicator,
-  Text,
-  View,
-  StyleSheet,
-} from "react-native";
+import { ActivityIndicator, Text, View, StyleSheet,ScrollView } from "react-native";
 import { useEffect, useState } from "react";
-import MapView from 'react-native-maps';
-import {Marker} from 'react-native-maps';
-
+import MapView from "react-native-maps";
+import { Marker } from "react-native-maps";
 
 export default function DetalleCursoScreen({ route }) {
   const url = process.env.EXPO_PUBLIC_API_URL;
@@ -41,35 +35,37 @@ export default function DetalleCursoScreen({ route }) {
       {isLoading ? (
         <ActivityIndicator />
       ) : (
-        <View style={styles.container}>
-          <Text style={styles.item}>Curso: {detalleCursos.name}</Text>
-          <Text style={styles.item}>
-            Fecha de inicio: {detalleCursos.fechaInicio}
-          </Text>
-          <Text style={styles.item}>Fecha fin: {detalleCursos.fechaFin}</Text>
-          <Text style={styles.item}>Duración: {detalleCursos.length}</Text>
-          <Text style={styles.item}>Precio: {detalleCursos.price}</Text>
-          <Text style={styles.item}>
-            Profesor: {detalleCursos.teachers.name}
-          </Text>
-          <Text style={styles.item}>
-            Ubicacion: {detalleCursos.shifts[0].clase.sedes[0].address}
-          </Text>
-          <Text style={styles.item}>Ubicacion en el mapa:</Text>
+        <ScrollView>
+          <View style={styles.container}>
+            <Text style={styles.item}>Curso: {detalleCursos.name}</Text>
+            <Text style={styles.item}>
+              Fecha de inicio: {detalleCursos.fechaInicio}
+            </Text>
+            <Text style={styles.item}>Fecha fin: {detalleCursos.fechaFin}</Text>
+            <Text style={styles.item}>Duración: {detalleCursos.length}</Text>
+            <Text style={styles.item}>Precio: {detalleCursos.price}</Text>
+            <Text style={styles.item}>
+              Profesor: {detalleCursos.teachers.name}
+            </Text>
+            <Text style={styles.item}>
+              Ubicacion: {detalleCursos.shifts[0].clase.sedes[0].address}
+            </Text>
+            <Text style={styles.item}>Ubicacion en el mapa:</Text>
 
-          <MapView style={{ width: "100%", height: 300 }}>
-            <Marker
-              coordinate={{
-                longitude:
-                  detalleCursos.shifts[0].clase.sedes[0].location.lenght,
-                latitude:
-                  detalleCursos.shifts[0].clase.sedes[0].location.latitude,
-                latitudeDelta: 0.0922,
-                longitudeDelta: 0.0421,
-              }}
-            />
-          </MapView>
-        </View>
+            <MapView style={{ width: "100%", height: 300 }}>
+              <Marker
+                coordinate={{
+                  longitude:
+                    detalleCursos.shifts[0].clase.sedes[0].location.lenght,
+                  latitude:
+                    detalleCursos.shifts[0].clase.sedes[0].location.latitude,
+                  latitudeDelta: 0.0922,
+                  longitudeDelta: 0.0421,
+                }}
+              />
+            </MapView>
+          </View>
+        </ScrollView>
       )}
     </View>
   );
