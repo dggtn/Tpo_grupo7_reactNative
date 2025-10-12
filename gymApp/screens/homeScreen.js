@@ -11,7 +11,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import CarouselComponent from "./carousel";
 
-export default function homeScreen() {
+export default function HomeScreen() {
   const navigation = useNavigation();
   const url = process.env.EXPO_PUBLIC_API_URL;
 
