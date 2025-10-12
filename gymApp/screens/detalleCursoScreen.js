@@ -46,6 +46,7 @@ export default function DetalleCursoScreen({ route }) {
           <Text style={styles.item}>Duración: {detalleCursos.length}</Text>
           <Text style={styles.item}>Precio: {detalleCursos.price}</Text>
           <Text style={styles.item}>Profesor: {detalleCursos.teachers.name}</Text>
+          <Text style={styles.item}>Ubicacion: {detalleCursos.shifts[0].clase.sedes[0].address}</Text>
         </View>
       )}
     </View>
