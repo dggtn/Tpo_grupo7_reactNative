@@ -56,7 +56,7 @@ export default function DetalleCursoScreen({ route }) {
 const styles = StyleSheet.create({
   container: {
     padding:10,
-    marginTop: 100,
+    marginTop: 10,
     marginRight:20,
     marginLeft:20,
 

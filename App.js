@@ -5,9 +5,9 @@ import MaterialDesignIcons from "@react-native-vector-icons/material-design-icon
 import PerfilScreen from "./gymApp/screens/PerfilScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-
+import { StyleSheet } from "react-native";
 import DetalleCursoScreen from "./gymApp/screens/DetalleCursoScreen";
-
+import { View } from "react-native";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -41,11 +41,14 @@ function Navegaciones() {
   return (
     <Stack.Navigator>
       <Stack.Screen
+        style={styles.rootScreen}
         name="Inicio "
         component={Home}
         options={{ headerShown: false }}
       />
-      <Stack.Screen name="DetalleCurso" component={DetalleCursoScreen} />
+      <Stack.Screen 
+      style={styles.rootScreen}
+      name="DetalleCurso" component={DetalleCursoScreen} />
     </Stack.Navigator>
   );
 }
@@ -59,3 +62,9 @@ export default function App() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  rootScreen: {
+    backgroundColor: "#120b2cff",
+  },
+});
