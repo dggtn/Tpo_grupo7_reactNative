@@ -12,7 +12,7 @@ export default function PerfilScreen() {
 
     const getUsuario = async () => {
         try {
-            const response =  await fetch(url + '/user/id', {
+            const response =  await fetch(url + '/user/' + {id}, {
                 method: 'GET'
             })
 

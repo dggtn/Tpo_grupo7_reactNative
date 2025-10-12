@@ -52,7 +52,7 @@ function Navegaciones() {
 export default function App() {
   return (
     <NavigationContainer>
-      <PaperProvider>
+      <PaperProvider theme={{ version: 2 }}>
         <Navegaciones />
       </PaperProvider>
     </NavigationContainer>
