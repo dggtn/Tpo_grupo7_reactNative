@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import CarouselComponent from "./carousel";
+import CarouselComponent from "../components/carousel";
 
 export default function HomeScreen() {
   const navigation = useNavigation();
