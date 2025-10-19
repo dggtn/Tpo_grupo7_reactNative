@@ -37,9 +37,12 @@ export default function HomeScreen() {
     getCursos();
   }, []);
 
-  const Curso = ({ cursoName, onPress }) => (
+  const Curso = ({ cursoName, disciplina, vacancy, professor, onPress }) => (
     <TouchableOpacity style={styles.item} onPress={onPress}>
       <Text style={styles.title}>{cursoName}</Text>
+      <Text style={styles.title}>tipo: {disciplina}</Text>
+      <Text style={styles.title}>cupos:{vacancy}</Text>
+      <Text style={styles.title}>profe: {professor}</Text>
     </TouchableOpacity>
   );
 
@@ -58,6 +61,9 @@ export default function HomeScreen() {
             renderItem={({ item }) => (
               <Curso
                 cursoName={item.name}
+                disciplina={item.sportName.sportTypeName}
+                vacancy={item.shifts[0].vacancy}
+                professor={item.teachers[0].name}
                 onPress={() =>
                   navigation.navigate("DetalleCurso", { idCurso: item.id })
                 }
