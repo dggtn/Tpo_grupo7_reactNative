@@ -2,6 +2,7 @@ import { ActivityIndicator, Text, View, StyleSheet,ScrollView } from "react-nati
 import { useEffect, useState } from "react";
 import MapView from "react-native-maps";
 import { Marker } from "react-native-maps";
+import { Button } from "react-native-paper";
 
 export default function DetalleCursoScreen({ route }) {
   const url = process.env.EXPO_PUBLIC_API_URL;
@@ -50,6 +51,9 @@ export default function DetalleCursoScreen({ route }) {
             <Text style={styles.item}>
               Ubicacion: {detalleCursos.shifts[0].clase.sedes[0].address}
             </Text>
+            <Button style={styles.btn} mode="contained">
+            Cómo llegar a la sede: {detalleCursos.shifts[0].clase.sedes[0].name}
+            </Button>
             <Text style={styles.item}>Ubicacion en el mapa:</Text>
 
             <MapView style={{ width: "100%", height: 300 }}>
@@ -85,4 +89,10 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     color: "#0e6c5eff",
   },
+  btn:{
+    fontSize:8,
+    marginTop:10,
+    marginBottom:10,
+    borderRadius:20,
+  }
 });
