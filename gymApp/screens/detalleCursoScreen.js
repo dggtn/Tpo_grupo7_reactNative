@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     marginLeft: 20,
   },
   item: {
-    fontSize: 30,
+    fontSize: 25,
     borderRadius: 10,
     fontWeight: "bold",
     fontStyle: "italic",
