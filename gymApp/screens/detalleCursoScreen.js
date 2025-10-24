@@ -84,5 +84,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontStyle: "italic",
     color: "#0e6c5eff",
-  },
+   },
+  btn:{
+    fontSize:8,
+    marginTop:10,
+    marginBottom:10,
+    borderRadius:20,
+  }
 });

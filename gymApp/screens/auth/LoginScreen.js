@@ -19,7 +19,7 @@ import {
   clearError,
   selectAuthLoading,
   selectAuthError,
-} from '../../store/slices/authSlice';
+} from '../../../store/slices/authSlice';
 import {
   checkBiometricAvailability,
   authenticateWithBiometric,
@@ -27,15 +27,15 @@ import {
   enableBiometric,
   selectBiometric,
   selectShouldRequestBiometric,
-} from '../../store/slices/biometricSlice';
-import { setUserEmail } from '../../store/slices/userSlice';
-import { VALIDATION } from '../../config/constants';
+} from '../../../store/slices/biometricSlice';
+import { setUserEmail } from '../../../store/slices/userSlice';
+import { VALIDATION } from '../../../config/constants';
 import { 
   showErrorToast, 
   showSuccessToast, 
   showWarningToast,
   showInfoToast 
-} from '../../utils/toastUtils';
+} from '../../../utils/toastUtils';
 
 export default function LoginScreen({ navigation }) {
   const dispatch = useDispatch();
@@ -158,7 +158,7 @@ export default function LoginScreen({ navigation }) {
       >
         <View style={styles.logoContainer}>
           <Image
-            source={require('../../assets/adaptive-icon.png')}
+            source={require('../../../assets/adaptive-icon.png')}
             style={styles.logo}
             resizeMode="contain"
           />

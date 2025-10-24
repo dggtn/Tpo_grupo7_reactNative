@@ -117,7 +117,7 @@ export default function RecoveryScreen({ navigation, route }) {
       <View style={styles.content}>
         <View style={styles.logoContainer}>
           <Image
-            source={require('../../assets/adaptive-icon.png')}
+            source={require('../../../assets/adaptive-icon.png')}
             style={styles.logo}
             resizeMode="contain"
           />

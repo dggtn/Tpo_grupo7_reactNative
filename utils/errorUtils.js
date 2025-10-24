@@ -1,5 +1,5 @@
 import NetInfo from '@react-native-community/netinfo';
-import { ERROR_TYPES } from '../redux/slices/errorSlice';
+import { ERROR_TYPES } from '../store/slices/errorSlice';
 
 /**
  * Verifica si hay conexión a internet

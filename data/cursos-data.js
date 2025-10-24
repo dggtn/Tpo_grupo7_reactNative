@@ -12,7 +12,7 @@ export const clases = [
     new Course(2, "Clase de yoga", "Relájate y encuentra tu equilibrio con yoga.", "1 hora", "Intermedio"),
     new Course(3, "Clase de entrenamiento funcional", "Entrena todo tu cuerpo con ejercicios funcionales.", "1 hora", "Avanzado")
 ];
-    export const cursos = [                                                                                                                                                                                                                                                                             },
+export const cursos = [
     new Course(1, "Curso de pilates", "Mejora tu flexibilidad y fuerza con pilates.", "4 semanas", "Principiante"),
     new Course(2, "Curso de yoga", "Relájate y encuentra tu equilibrio con yoga.", "4 semanas", "Intermedio"),
     new Course(3, "Curso de entrenamiento funcional", "Entrena todo tu cuerpo con ejercicios funcionales.", "4 semanas", "Avanzado")

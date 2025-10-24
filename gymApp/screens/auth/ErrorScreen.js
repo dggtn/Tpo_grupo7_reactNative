@@ -15,9 +15,9 @@ import {
   hideErrorScreen,
   selectCurrentError,
   ERROR_TYPES,
-} from '../../store/slices/errorSlice';
-import { logout } from '../../store/slices/authSlice';
-import { showInfoToast, showSuccessToast } from '../../utils/toastUtils';
+} from '../../../store/slices/errorSlice';
+import { logout } from '../../../store/slices/authSlice';
+import { showInfoToast, showSuccessToast } from '../../../utils/toastUtils';
 
 export default function ErrorScreen() {
   const dispatch = useDispatch();

@@ -38,7 +38,7 @@ export const clearAllStorage = async () => {
  */
 export const devQuickLogin = async () => {
   if (__DEV__) {
-    const { login } = require('../redux/slices/authSlice');
+    const { login } = require('../store/slices/authSlice');
     
     try {
       await store.dispatch(
@@ -95,7 +95,7 @@ export const debugToken = () => {
  */
 export const simulateError = (type = 'network') => {
   if (__DEV__) {
-    const { setError } = require('../redux/slices/errorSlice');
+    const { setError } = require('../store/slices/errorSlice');
     
     const errors = {
       network: {
@@ -132,11 +132,11 @@ export const toggleBiometric = async () => {
     const enabled = state.biometric.enabled;
     
     if (enabled) {
-      const { disableBiometric } = require('../redux/slices/biometricSlice');
+      const { disableBiometric } = require('../store/slices/biometricSlice');
       await store.dispatch(disableBiometric()).unwrap();
       console.log('❌ Biometría desactivada');
     } else {
-      const { enableBiometric } = require('../redux/slices/biometricSlice');
+      const { enableBiometric } = require('../store/slices/biometricSlice');
       await store.dispatch(enableBiometric('test@example.com')).unwrap();
       console.log('✅ Biometría activada');
     }

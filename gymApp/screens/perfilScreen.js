@@ -23,17 +23,39 @@ import {
   showInfoToast,
 } from '../../utils/toastUtils';
 
-export default function PerfilScreen() {
+import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+
+const PerfilScreen = () => {
   const dispatch = useDispatch();
-  const user = useSelector(selectUser);
-  const userEmail = useSelector(selectUserEmail);
-  const userFullName = useSelector(selectUserFullName);
   const biometricEnabled = useSelector(selectBiometricEnabled);
   const biometricEmail = useSelector(selectBiometricUserEmail);
+
+  const [text, onChangeText] = useState("edita o agrega tu nombre");
+  const [text2, onChangeText2] = useState("edita o agrega tu email");
+  const navigation = useNavigation();
+  const url = process.env.EXPO_PUBLIC_API_URL;
+  const [isLoading, setLoading] = useState(true);
+  const [usuario, setUsuario] = useState({});
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [showBiometricDialog, setShowBiometricDialog] = useState(false);
+
+  const getUsuario = async () => {
+    try {
+      const response = await fetch(url + "/user/" + { id }, {
+        method: "GET",
+      });
+
+      const json = await response.json();
+      setUsuario(json.data);
+    } catch (error) {
+      console.log("ERROR, ", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     setShowLogoutDialog(true);
@@ -69,36 +91,36 @@ export default function PerfilScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>MI PERFIL</Text>
-
-      {/* Avatar Placeholder */}
-      <View style={styles.avatarContainer}>
-        <Image
-          source={require('../../assets/adaptive-icon.png')}
-          style={styles.avatar}
-        />
-      </View>
-
-      {/* User Info */}
-      <View style={styles.infoContainer}>
-        <View style={styles.infoRow}>
-          <Ionicons name="person-outline" size={24} color="#fff" />
-          <View style={styles.infoTextContainer}>
-            <Text style={styles.infoLabel}>Nombre:</Text>
-            <Text style={styles.infoValue}>{userFullName}</Text>
+      <SafeAreaProvider>
+        <SafeAreaView>
+          <Text style={styles.title}>MI PERFIL</Text>
+          {/* Avatar Placeholder */}
+          <View style={styles.avatarContainer}>
+            <Image
+              source={require('../../assets/adaptive-icon.png')}
+              style={styles.avatar}
+            />
           </View>
-        </View>
-
-        <View style={styles.infoRow}>
-          <Ionicons name="mail-outline" size={24} color="#fff" />
-          <View style={styles.infoTextContainer}>
-            <Text style={styles.infoLabel}>Email:</Text>
-            <Text style={styles.infoValue}>{userEmail || 'No disponible'}</Text>
+  
+          {/* User Info */}
+          <View style={styles.infoContainer}>
+            <Text style={styles.title}>Perfil</Text>
+            <TextInput
+            style={styles.input}
+            onChangeText={onChangeText}
+            value={text}
+            placeholder="edita o agrega tu nombre"
+            />
+            <TextInput
+            style={styles.input}
+            onChangeText={onChangeText2}
+            value={text2}
+            placeholder="edita o agrega tu email"
+            />
           </View>
-        </View>
 
-        {/* Biometric Status */}
-        {biometricEnabled && (
+          {/* Biometric Status */}
+          {biometricEnabled && (
           <View style={styles.infoRow}>
             <Ionicons name="finger-print" size={24} color="#4CAF50" />
             <View style={styles.infoTextContainer}>
@@ -111,91 +133,94 @@ export default function PerfilScreen() {
               <Ionicons name="close-circle-outline" size={24} color="#f44336" />
             </TouchableOpacity>
           </View>
-        )}
-      </View>
+          )}
 
-      {/* Logout Button */}
-      <TouchableOpacity
-        style={[styles.logoutButton, isLoggingOut && styles.buttonDisabled]}
-        onPress={handleLogout}
-        disabled={isLoggingOut}
-      >
-        {isLoggingOut ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <>
-            <Ionicons name="log-out-outline" size={24} color="#fff" />
-            <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
-          </>
-        )}
-      </TouchableOpacity>
+          {/* Logout Button */}
+          <TouchableOpacity
+            style={[styles.logoutButton, isLoggingOut && styles.buttonDisabled]}
+            onPress={handleLogout}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="log-out-outline" size={24} color="#fff" />
+                <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
+              </>
+            )}
+          </TouchableOpacity>
 
-      {/* Logout Confirmation Dialog */}
-      <Modal
-        visible={showLogoutDialog}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowLogoutDialog(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Ionicons name="log-out-outline" size={48} color="#f44336" />
-            <Text style={styles.modalTitle}>Cerrar Sesión</Text>
-            <Text style={styles.modalMessage}>
-              ¿Estás seguro que deseas cerrar sesión?
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalButtonSecondary}
-                onPress={() => setShowLogoutDialog(false)}
-              >
-                <Text style={styles.modalButtonSecondaryText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalButtonPrimary}
-                onPress={performLogout}
-              >
-                <Text style={styles.modalButtonPrimaryText}>Sí, salir</Text>
-              </TouchableOpacity>
+          {/* Logout Confirmation Dialog */}
+          <Modal
+            visible={showLogoutDialog}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowLogoutDialog(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Ionicons name="log-out-outline" size={48} color="#f44336" />
+                <Text style={styles.modalTitle}>Cerrar Sesión</Text>
+                <Text style={styles.modalMessage}>
+                  ¿Estás seguro que deseas cerrar sesión?
+                </Text>
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.modalButtonSecondary}
+                    onPress={() => setShowLogoutDialog(false)}
+                  >
+                    <Text style={styles.modalButtonSecondaryText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.modalButtonPrimary}
+                    onPress={performLogout}
+                  >
+                    <Text style={styles.modalButtonPrimaryText}>Sí, salir</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
-      </Modal>
+          </Modal>
 
-      {/* Biometric Disable Dialog */}
-      <Modal
-        visible={showBiometricDialog}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowBiometricDialog(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Ionicons name="finger-print" size={48} color="#FF9800" />
-            <Text style={styles.modalTitle}>Desactivar Biometría</Text>
-            <Text style={styles.modalMessage}>
-              ¿Deseas desactivar la autenticación biométrica? Podrás volver a activarla en cualquier momento.
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalButtonSecondary}
-                onPress={() => setShowBiometricDialog(false)}
-              >
-                <Text style={styles.modalButtonSecondaryText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalButtonPrimary}
-                onPress={performDisableBiometric}
-              >
-                <Text style={styles.modalButtonPrimaryText}>Sí, desactivar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+         {/* Biometric Disable Dialog */}
+          <Modal
+            visible={showBiometricDialog}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowBiometricDialog(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Ionicons name="finger-print" size={48} color="#FF9800" />
+                <Text style={styles.modalTitle}>Desactivar Biometría</Text>
+                <Text style={styles.modalMessage}>
+                  ¿Deseas desactivar la autenticación biométrica? Podrás volver a activarla en cualquier momento.
+                </Text>
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.modalButtonSecondary}
+                    onPress={() => setShowBiometricDialog(false)}
+                  >
+                    <Text style={styles.modalButtonSecondaryText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.modalButtonPrimary}
+                    onPress={performDisableBiometric}
+                  >
+                    <Text style={styles.modalButtonPrimaryText}>Sí, desactivar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+          </Modal>
+
+        </SafeAreaView>
+      </SafeAreaProvider>
     </View>
   );
 }
+export default PerfilScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -211,6 +236,28 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     marginTop: 20,
     color: '#fff',
+  },
+  subtitle: {
+    marginTop: 10,
+    fontSize: 24,
+    fontWeight: "bold",
+    fontStyle: "italic",
+    marginBottom: 20,
+    color: "#e2dcebff",
+    
+  },
+  input: {
+    height: 40,
+    margin: 12,
+    borderWidth: 1,
+    borderColor: "#ecdae8ff",
+    borderStyle: "solid",
+    borderRadius: 10,
+    padding: 10,
+    color: "#e2dcebff",
+    fontSize: 15,
+    fontWeight: "bold",
+    fontStyle: "italic",
   },
   avatarContainer: {
     alignItems: 'center',
