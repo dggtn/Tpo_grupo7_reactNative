@@ -29,6 +29,15 @@ export default function RootNavigator() {
   const [isReady, setIsReady] = React.useState(false);
 
   useEffect(() => {
+    console.log('[RootNavigator] Estado de autenticación:', {
+      isAuthenticated,
+      hasToken: !!token,
+      tokenLength: token ? token.length : 0,
+      showErrorScreen
+    });
+  }, [isAuthenticated, token, showErrorScreen]);
+
+  useEffect(() => {
     // Cargar configuración inicial
     const initializeApp = async () => {
       try {

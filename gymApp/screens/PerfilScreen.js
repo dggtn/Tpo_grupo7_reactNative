@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  TextInput
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,7 @@ import { useNavigation } from "@react-navigation/native";
 
 const PerfilScreen = () => {
   const dispatch = useDispatch();
+  const token = useSelector(selectToken); 
   const biometricEnabled = useSelector(selectBiometricEnabled);
   const biometricEmail = useSelector(selectBiometricUserEmail);
 
@@ -44,18 +46,38 @@ const PerfilScreen = () => {
 
   const getUsuario = async () => {
     try {
-      const response = await fetch(url + "/user/" + { id }, {
+      const response = await fetch(url + "/users/me", {
         method: "GET",
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
       const json = await response.json();
-      setUsuario(json.data);
+      console.log('[PerfilScreen] Response:', json);
+      
+      if (json.success) {
+        setUsuario(json.data);
+        onChangeText(json.data.firstName || "edita o agrega tu nombre");
+        onChangeText2(json.data.email || "edita o agrega tu email");
+      } else {
+        console.error('[PerfilScreen] Error:', json.error);
+      }
     } catch (error) {
-      console.log("ERROR, ", error);
+      console.error("[PerfilScreen] ERROR: ", error);
     } finally {
       setLoading(false);
     }
   };
+
+  // useEffect para cargar usuario
+  useEffect(() => {
+    console.log('[PerfilScreen] Montando componente');
+    if (token) {
+      getUsuario();
+    }
+  }, [token]);
 
   const handleLogout = () => {
     setShowLogoutDialog(true);
