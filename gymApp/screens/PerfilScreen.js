@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,14 @@ import {
   ActivityIndicator,
   Image,
   Modal,
-  TextInput
+  TextInput, // ← Ya agregado correctamente
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
-import { logout } from '../../store/slices/authSlice';
+
+// ✅ CORRECCIÓN: Combinar imports de authSlice en UNA SOLA LÍNEA
+import { logout, selectToken } from '../../store/slices/authSlice';
+
 import { selectUser, selectUserEmail, selectUserFullName } from '../../store/slices/userSlice';
 import {
   disableBiometric,
@@ -29,7 +32,9 @@ import { useNavigation } from "@react-navigation/native";
 
 const PerfilScreen = () => {
   const dispatch = useDispatch();
-  const token = useSelector(selectToken); 
+  
+  // ✅ Ahora selectToken está disponible
+  const token = useSelector(selectToken);
   const biometricEnabled = useSelector(selectBiometricEnabled);
   const biometricEmail = useSelector(selectBiometricUserEmail);
 
@@ -46,6 +51,8 @@ const PerfilScreen = () => {
 
   const getUsuario = async () => {
     try {
+      console.log('[PerfilScreen] Obteniendo usuario con token:', token ? 'presente' : 'ausente');
+      
       const response = await fetch(url + "/users/me", {
         method: "GET",
         headers: {
@@ -63,19 +70,23 @@ const PerfilScreen = () => {
         onChangeText2(json.data.email || "edita o agrega tu email");
       } else {
         console.error('[PerfilScreen] Error:', json.error);
+        showErrorToast('Error', 'No se pudo cargar el perfil');
       }
     } catch (error) {
       console.error("[PerfilScreen] ERROR: ", error);
+      showErrorToast('Error', 'Error de conexión');
     } finally {
       setLoading(false);
     }
   };
 
-  // useEffect para cargar usuario
   useEffect(() => {
     console.log('[PerfilScreen] Montando componente');
     if (token) {
       getUsuario();
+    } else {
+      console.warn('[PerfilScreen] No hay token disponible');
+      setLoading(false);
     }
   }, [token]);
 
@@ -111,11 +122,21 @@ const PerfilScreen = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#fff" />
+        <Text style={{ color: '#fff', marginTop: 10 }}>Cargando perfil...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <SafeAreaProvider>
         <SafeAreaView>
           <Text style={styles.title}>MI PERFIL</Text>
+          
           {/* Avatar Placeholder */}
           <View style={styles.avatarContainer}>
             <Image
@@ -126,35 +147,39 @@ const PerfilScreen = () => {
   
           {/* User Info */}
           <View style={styles.infoContainer}>
-            <Text style={styles.title}>Perfil</Text>
+            <Text style={styles.subtitle}>Perfil</Text>
             <TextInput
-            style={styles.input}
-            onChangeText={onChangeText}
-            value={text}
-            placeholder="edita o agrega tu nombre"
+              style={styles.input}
+              onChangeText={onChangeText}
+              value={text}
+              placeholder="edita o agrega tu nombre"
+              placeholderTextColor="#999"
             />
             <TextInput
-            style={styles.input}
-            onChangeText={onChangeText2}
-            value={text2}
-            placeholder="edita o agrega tu email"
+              style={styles.input}
+              onChangeText={onChangeText2}
+              value={text2}
+              placeholder="edita o agrega tu email"
+              placeholderTextColor="#999"
+              keyboardType="email-address"
+              autoCapitalize="none"
             />
           </View>
 
           {/* Biometric Status */}
           {biometricEnabled && (
-          <View style={styles.infoRow}>
-            <Ionicons name="finger-print" size={24} color="#4CAF50" />
-            <View style={styles.infoTextContainer}>
-              <Text style={styles.infoLabel}>Biometría:</Text>
-              <Text style={[styles.infoValue, { color: '#4CAF50' }]}>
-                Activa para {biometricEmail}
-              </Text>
+            <View style={styles.infoRow}>
+              <Ionicons name="finger-print" size={24} color="#4CAF50" />
+              <View style={styles.infoTextContainer}>
+                <Text style={styles.infoLabel}>Biometría:</Text>
+                <Text style={[styles.infoValue, { color: '#4CAF50' }]}>
+                  Activa para {biometricEmail}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={handleDisableBiometric}>
+                <Ionicons name="close-circle-outline" size={24} color="#f44336" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={handleDisableBiometric}>
-              <Ionicons name="close-circle-outline" size={24} color="#f44336" />
-            </TouchableOpacity>
-          </View>
           )}
 
           {/* Logout Button */}
@@ -205,7 +230,7 @@ const PerfilScreen = () => {
             </View>
           </Modal>
 
-         {/* Biometric Disable Dialog */}
+          {/* Biometric Disable Dialog */}
           <Modal
             visible={showBiometricDialog}
             transparent={true}
@@ -231,10 +256,10 @@ const PerfilScreen = () => {
                     onPress={performDisableBiometric}
                   >
                     <Text style={styles.modalButtonPrimaryText}>Sí, desactivar</Text>
-                    </TouchableOpacity>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               </View>
+            </View>
           </Modal>
 
         </SafeAreaView>
@@ -242,6 +267,7 @@ const PerfilScreen = () => {
     </View>
   );
 }
+
 export default PerfilScreen;
 
 const styles = StyleSheet.create({
@@ -266,7 +292,6 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginBottom: 20,
     color: "#e2dcebff",
-    
   },
   input: {
     height: 40,
@@ -276,7 +301,8 @@ const styles = StyleSheet.create({
     borderStyle: "solid",
     borderRadius: 10,
     padding: 10,
-    color: "#e2dcebff",
+    color: "#fff", // Cambiado para mejor visibilidad
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Agregado para mejor contraste
     fontSize: 15,
     fontWeight: "bold",
     fontStyle: "italic",
@@ -303,6 +329,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     gap: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 15,
+    borderRadius: 8,
   },
   infoTextContainer: {
     flex: 1,
@@ -347,6 +376,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 20,
     maxWidth: 400,
+    width: '90%',
   },
   modalTitle: {
     fontSize: 20,
@@ -366,12 +396,15 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     gap: 12,
+    width: '100%',
   },
   modalButtonPrimary: {
+    flex: 1,
     backgroundColor: '#f44336',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+    alignItems: 'center',
   },
   modalButtonPrimaryText: {
     color: '#fff',
@@ -379,10 +412,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   modalButtonSecondary: {
+    flex: 1,
     backgroundColor: '#e0e0e0',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+    alignItems: 'center',
   },
   modalButtonSecondaryText: {
     color: '#666',
