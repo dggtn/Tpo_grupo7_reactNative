@@ -8,7 +8,7 @@ const data = [
   { id: "3", text: "Semana del amigo", styles: { fontSize: 30, fontWeight: "bold", fontStyle: "italic", color: "#fff" } },
 ];
 
-const CarouselComponent = () => {
+const Carousel = () => {
   const renderItem = ({ item }) => (
     <View style={styles.itemContainer}>
       <Text style={item.styles} >{item.text}</Text>
@@ -48,4 +48,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CarouselComponent;
+export default Carousel;
