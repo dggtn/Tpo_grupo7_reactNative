@@ -25,7 +25,6 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-
     "expo": {
       "plugins": [
         [
@@ -36,6 +35,9 @@
         ],
         "react-native-map-link"
       ]
-    }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }
