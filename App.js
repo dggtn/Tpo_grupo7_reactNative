@@ -1,70 +1,46 @@
-import { NavigationContainer } from "@react-navigation/native";
-import HomeScreen from "./gymApp/screens/HomeScreen";
-import { PaperProvider } from "react-native-paper";
-import MaterialDesignIcons from "@react-native-vector-icons/material-design-icons";
-import PerfilScreen from "./gymApp/screens/PerfilScreen";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { StyleSheet } from "react-native";
-import DetalleCursoScreen from "./gymApp/screens/DetalleCursoScreen";
-import { View } from "react-native";
+import React from 'react';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import { ActivityIndicator, View, StyleSheet, LogBox } from 'react-native';
+import { PaperProvider } from 'react-native-paper';
+import Toast from 'react-native-toast-message';
+import { store, persistor } from './store/store';
+import RootNavigator from './navigation/RootNavigator';
+import ErrorBoundary from './gymApp/components/ErrorBoundary';
+import { toastConfig } from './config/toastConfig';
 
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
 
-function Home() {
-  return (
-    <Tab.Navigator>
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <MaterialDesignIcons name="home" color={color} size={30} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Perfil"
-        component={PerfilScreen}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <MaterialDesignIcons name="account" color={color} size={30} />
-          ),
-        }}
-      />
-    </Tab.Navigator>
-  );
-}
-
-function Navegaciones() {
-  return (
-    <Stack.Navigator>
-      <Stack.Screen
-        style={styles.rootScreen}
-        name="Inicio "
-        component={Home}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-      style={styles.rootScreen}
-      name="DetalleCurso" component={DetalleCursoScreen} />
-    </Stack.Navigator>
-  );
-}
+LogBox.ignoreLogs([
+  'Non-serializable values were found in the navigation state',
+]);
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <PaperProvider theme={{ version: 2 }}>
-        <Navegaciones />
-      </PaperProvider>
-    </NavigationContainer>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <PersistGate
+          loading={
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#74C1E6" />
+            </View>
+          }
+          persistor={persistor}
+        >
+          <PaperProvider theme={{ version: 2 }}>
+            <RootNavigator />
+            <Toast config={toastConfig} />
+          </PaperProvider>
+        </PersistGate>
+      </Provider>
+    </ErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
-  rootScreen: {
-    backgroundColor: "#120b2cff",
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#B1A1A1',
   },
 });

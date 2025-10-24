@@ -10,7 +10,7 @@ import {
   onPress,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import CarouselComponent from "../components/carousel";
+import CarouselComponent from "../components/Carousel";
 import Dropdown from "../components/DropdownComponent";
 
 export default function HomeScreen() {
@@ -20,7 +20,7 @@ export default function HomeScreen() {
   const [isLoading, setLoading] = useState(true);
   const [cursos, setCursos] = useState([]);
 
-  const getCursos = async () => {
+  const getCursos = async () =>  {
     try {
       const response = await fetch(url + "/shifts", {
         method: "GET",
