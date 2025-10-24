@@ -9,7 +9,7 @@ import RootNavigator from './navigation/RootNavigator';
 import ErrorBoundary from './gymApp/components/ErrorBoundary';
 import { toastConfig } from './config/toastConfig';
 
-// Ignorar warnings específicos de Redux Persist
+
 LogBox.ignoreLogs([
   'Non-serializable values were found in the navigation state',
 ]);

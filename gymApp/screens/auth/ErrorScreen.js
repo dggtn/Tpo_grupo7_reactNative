@@ -109,13 +109,13 @@ export default function ErrorScreen() {
 
   const handleContactSupport = () => {
     const message = `
-Error en Gym App:
-Tipo: ${currentError.type}
-Mensaje: ${currentError.message}
-Pantalla: ${currentError.source}
-Detalles: ${currentError.details || 'N/A'}
-Timestamp: ${new Date(currentError.timestamp).toLocaleString()}
-    `.trim();
+      Error en Gym App:
+      Tipo: ${currentError.type}
+      Mensaje: ${currentError.message}
+      Pantalla: ${currentError.source}
+      Detalles: ${currentError.details || 'N/A'}
+      Timestamp: ${new Date(currentError.timestamp).toLocaleString()}
+          `.trim();
 
     setSupportMessage(message);
     setShowSupportModal(true);
