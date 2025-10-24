@@ -225,7 +225,7 @@ export default PerfilScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#b35cbdff',
+    backgroundColor: "#b35cbdff",
     padding: 20,
   },
   title: {

@@ -7,6 +7,7 @@ import {
   StyleSheet,
   StatusBar,
   TouchableOpacity,
+  onPress,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import CarouselComponent from "../components/Carousel";
