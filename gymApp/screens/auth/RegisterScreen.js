@@ -131,14 +131,10 @@ export default function RegisterScreen({ navigation, route }) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.logoContainer}>
-          <Image
-            source={require('../../../assets/adaptive-icon.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+         <Ionicons name="barbell" size={64} color="#3a8f98ff" />
+         <Text style={styles.title}>RitmoFit</Text>
+         <Text style={styles.subtitle}>Registro de Usuario</Text>
         </View>
-
-        <Text style={styles.title}>Registro de Usuario</Text>
 
         <View style={styles.inputContainer}>
           <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
@@ -304,11 +300,16 @@ const styles = StyleSheet.create({
     height: 100,
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 30,
-    color: '#121212',
+    marginTop: 10,
+    color: '#9e4621ea',
+  },
+   subtitle: {
+    fontSize: 18,
+    color: '#ffffffe7',
+    marginTop: 5,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -340,7 +341,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   registerButton: {
-    backgroundColor: '#74C1E6',
+    backgroundColor: '#dbc668e0',
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -352,7 +353,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   loginButton: {
-    backgroundColor: '#9CCC65',
+    backgroundColor: '#34998ad3',
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',

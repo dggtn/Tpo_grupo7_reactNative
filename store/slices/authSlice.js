@@ -64,12 +64,29 @@ export const checkPendingRegistration = createAsyncThunk(
 
 export const logout = createAsyncThunk(
   'auth/logout',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, getState }) => {
     try {
-      await authAPI.logout();
+      console.log('[authSlice.logout] 🚪 Iniciando logout...');
+      
+      const state = getState();
+      const token = state.auth.token;
+      
+      console.log('[authSlice.logout] 🔑 Token presente:', !!token);
+      
+      if (token) {
+        console.log('[authSlice.logout] 📡 Enviando request al backend...');
+        await authAPI.logout(token);
+        console.log('[authSlice.logout] ✅ Logout exitoso en backend');
+      } else {
+        console.log('[authSlice.logout] ⚠️ No hay token, solo logout local');
+      }
+      
       return null;
     } catch (error) {
-      // Siempre hacer logout local aunque falle el servidor
+      console.error('[authSlice.logout] ❌ Error:', error);
+      // ✅ CRÍTICO: Siempre hacer logout local aunque falle el servidor
+      // No rechazar, solo loguear el error
+      console.log('[authSlice.logout] 🔄 Continuando con logout local');
       return null;
     }
   }
