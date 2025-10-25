@@ -32,7 +32,6 @@ export default function RootNavigator() {
     console.log('[RootNavigator] Estado de autenticación:', {
       isAuthenticated,
       hasToken: !!token,
-      tokenLength: token ? token.length : 0,
       showErrorScreen
     });
   }, [isAuthenticated, token, showErrorScreen]);
@@ -42,12 +41,12 @@ export default function RootNavigator() {
       try {
         console.log('[RootNavigator] 🚀 Inicializando aplicación...');
         
-        // Cargar configuración biométrica guardada
+        // ✅ SOLO cargar configuración guardada (NO habilitar automáticamente)
         await dispatch(loadBiometricConfig()).unwrap();
         console.log('[RootNavigator] ✅ Configuración biométrica cargada');
         
-        // Verificar disponibilidad de biometría
-        await dispatch(checkBiometricAvailability()).unwrap();
+        // ✅ Verificar disponibilidad UNA SOLA VEZ (se cachea automáticamente)
+        await dispatch(checkBiometricAvailability(false)).unwrap();
         console.log('[RootNavigator] ✅ Disponibilidad biométrica verificada');
         
       } catch (error) {
@@ -58,7 +57,7 @@ export default function RootNavigator() {
     };
 
     initializeApp();
-  }, []);
+  }, []); // ✅ CRÍTICO: Array vacío = solo ejecuta una vez
 
   if (!isReady) {
     return (
@@ -73,7 +72,6 @@ export default function RootNavigator() {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          // ✅ AGREGADO: Animación más suave
           animation: 'fade',
         }}
       >
@@ -85,7 +83,6 @@ export default function RootNavigator() {
               name="App" 
               component={AppStack}
               options={{
-                // Evitar animación brusca al navegar desde login
                 animationTypeForReplace: 'pop',
               }}
             />
@@ -107,7 +104,6 @@ export default function RootNavigator() {
             name="Auth" 
             component={AuthStack}
             options={{
-              // ✅ Mantener la pantalla de auth montada para el modal
               animationEnabled: true,
             }}
           />

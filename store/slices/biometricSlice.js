@@ -2,32 +2,87 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 
+let availabilityCache = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 60000; // 1 minuto
+
 // Async thunks
 export const checkBiometricAvailability = createAsyncThunk(
   'biometric/checkAvailability',
-  async (_, { rejectWithValue }) => {
+  async (forceCheck = false, { rejectWithValue }) => {
     try {
+      // USAR CACHE si existe y no está expirado (a menos que se fuerce)
+      const now = Date.now();
+      if (!forceCheck && availabilityCache && (now - cacheTimestamp) < CACHE_DURATION) {
+        console.log('[BiometricSlice] ✅ Usando resultado cacheado');
+        return availabilityCache;
+      }
+
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
       
-      // ✅ MODIFICADO: Aceptar como disponible si tiene hardware Y está enrollado
-      // (esto incluye PIN/Patrón como alternativa)
-      const isAvailable = hasHardware && isEnrolled;
-      
-      console.log('[BiometricSlice] Availability Check:', {
+      console.log('[BiometricSlice] Detección inicial:', {
         hasHardware,
         isEnrolled,
-        supportedTypes,
-        isAvailable
+        supportedTypes
       });
+
+      // ✅ Solo hacer prueba real si tiene hardware
+      let reallyAvailable = false;
       
-      return {
+      if (hasHardware) {
+        try {
+          console.log('[BiometricSlice] 🧪 Haciendo prueba real única...');
+          
+          // Intentar autenticar para verificar disponibilidad real
+          const testResult = await LocalAuthentication.authenticateAsync({
+            promptMessage: 'Verificando seguridad del dispositivo',
+            cancelLabel: 'Cancelar',
+            disableDeviceFallback: false,
+          });
+          
+          // Si el usuario pudo interactuar con el dialog, está disponible
+          reallyAvailable = testResult.success || testResult.error === 'user_cancel';
+          
+          console.log('[BiometricSlice] ✅ Prueba real completada:', {
+            testSuccess: testResult.success,
+            testError: testResult.error,
+            reallyAvailable
+          });
+          
+        } catch (testError) {
+          // Si falla con "not available", entonces NO está disponible
+          if (testError.toString().includes('not available') || 
+              testError.toString().includes('not enrolled')) {
+            reallyAvailable = false;
+            console.log('[BiometricSlice] ❌ No disponible por error:', testError.message);
+          } else {
+            // Otros errores (como cancelación) = disponible
+            reallyAvailable = true;
+            console.log('[BiometricSlice] ✅ Disponible (error de cancelación)');
+          }
+        }
+      }
+      
+      // ✅ Usar resultado de prueba real en lugar de isEnrolled
+      const isAvailable = hasHardware && reallyAvailable;
+      
+      const result = {
         hasHardware,
         isEnrolled,
         supportedTypes,
         isAvailable,
+        reallyAvailable,
       };
+      
+      console.log('[BiometricSlice] Availability Check FINAL:', result);
+      
+      // ✅ CACHEAR resultado
+      availabilityCache = result;
+      cacheTimestamp = now;
+      
+      return result;
     } catch (error) {
       console.error('[BiometricSlice] Error checking availability:', error);
       return rejectWithValue('Error verificando biometría');
@@ -48,7 +103,7 @@ export const authenticateWithBiometric = createAsyncThunk(
       if (result.success) {
         return { success: true };
       } else {
-        return rejectWithValue('Autenticación fallida');
+        return rejectWithValue(result.error || 'Autenticación fallida');
       }
     } catch (error) {
       return rejectWithValue(error.message || 'Error en autenticación biométrica');
@@ -131,6 +186,7 @@ const biometricSlice = createSlice({
     hasHardware: false,
     isEnrolled: false,
     isAvailable: false,
+    reallyAvailable: false, // ✅ NUEVO: resultado de prueba real
     supportedTypes: [],
     isLoading: false,
     error: null,
@@ -149,6 +205,12 @@ const biometricSlice = createSlice({
       state.setupTime = null;
       state.lastUsed = null;
     },
+    // ✅ NUEVO: Limpiar cache manualmente si es necesario
+    clearAvailabilityCache: (state) => {
+      availabilityCache = null;
+      cacheTimestamp = 0;
+      console.log('[BiometricSlice] 🗑️ Cache limpiado');
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -162,6 +224,7 @@ const biometricSlice = createSlice({
         state.hasHardware = action.payload.hasHardware;
         state.isEnrolled = action.payload.isEnrolled;
         state.isAvailable = action.payload.isAvailable;
+        state.reallyAvailable = action.payload.reallyAvailable; // ✅ NUEVO
         state.supportedTypes = action.payload.supportedTypes;
       })
       .addCase(checkBiometricAvailability.rejected, (state, action) => {
@@ -236,13 +299,15 @@ const biometricSlice = createSlice({
 export const { 
   clearBiometricError, 
   setAutoRequest, 
-  clearBiometricConfig 
+  clearBiometricConfig,
+  clearAvailabilityCache, // ✅ NUEVO
 } = biometricSlice.actions;
 
 // Selectors
 export const selectBiometric = (state) => state.biometric;
 export const selectBiometricEnabled = (state) => state.biometric.enabled;
 export const selectBiometricAvailable = (state) => state.biometric.isAvailable;
+export const selectBiometricReallyAvailable = (state) => state.biometric.reallyAvailable; // ✅ NUEVO
 export const selectBiometricUserEmail = (state) => state.biometric.userEmail;
 export const selectBiometricLoading = (state) => state.biometric.isLoading;
 export const selectShouldRequestBiometric = (state) => {

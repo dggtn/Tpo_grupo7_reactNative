@@ -1,5 +1,7 @@
+// gymApp/components/BiometricSetupManager.js
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import BiometricPromptModal from './BiometricPromptModal';
 import {
   selectBiometricEnabled,
@@ -12,7 +14,6 @@ import { selectUserEmail } from '../../store/slices/userSlice';
 import { getBiometricTypeName } from '../../utils/biometricUtils';
 import { saveBiometricCredentials } from '../../utils/biometricStorageUtils';
 import { showSuccessToast, showErrorToast } from '../../utils/toastUtils';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BIOMETRIC_PROMPT_SHOWN_KEY = 'biometric_prompt_shown';
 
@@ -37,8 +38,14 @@ export default function BiometricSetupManager() {
   }, [currentUserEmail, biometricEnabled, biometricAvailable]);
 
   const checkAndShowModal = async () => {
-    if (!currentUserEmail || !biometricAvailable) {
-      console.log('[BiometricSetupManager] ⏭️ Condiciones no cumplidas');
+    if (!currentUserEmail) {
+      console.log('[BiometricSetupManager] ⏭️ No hay usuario autenticado');
+      return;
+    }
+
+    // ✅ USAR resultado de biometricSlice que ya hizo la prueba real
+    if (!biometricAvailable) {
+      console.log('[BiometricSetupManager] ⏭️ Biometría no disponible en dispositivo');
       return;
     }
 
