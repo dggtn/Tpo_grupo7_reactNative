@@ -29,6 +29,7 @@ import {
   deleteBiometricCredentials,
 } from "../../utils/biometricStorageUtils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Button } from "react-native-paper";
 
 const BIOMETRIC_PROMPT_SHOWN_KEY = "biometric_prompt_shown";
 
@@ -69,6 +70,38 @@ const PerfilScreen = () => {
   const loadBiometricType = async () => {
     const typeName = await getBiometricTypeName();
     setBiometricTypeName(typeName);
+  };
+
+
+  const putUsuario = async () => {
+    try {
+      const response = await fetch(url + "/users/name", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: text
+        }),
+      });
+
+      const json = await response.json();
+      console.log("usuario actualizado", json);
+
+      if (json.ok) {
+        setUsuario(json.data);
+        showSuccessToast("Éxito", "Perfil actualizado correctamente");
+      } else {
+        showErrorToast("Error", "No se pudo actualizar el perfil");
+      }
+    } catch (error) {
+      console.error("[PerfilScreen] ERROR: ", error);
+      showErrorToast("Error", "Error de conexión");
+    }
+    finally {
+      setLoading(false);
+    }
   };
 
   const getUsuario = async () => {
@@ -155,7 +188,7 @@ const PerfilScreen = () => {
     setShowPasswordPrompt(false);
 
     try {
-      console.log("[PerfilScreen] 🔐 Habilitando biometría para:", userEmail);
+      console.log("[PerfilScreen] Habilitando biometría para:", userEmail);
 
 
       await dispatch(
@@ -175,7 +208,7 @@ const PerfilScreen = () => {
   
       await dispatch(enableBiometric(userEmail)).unwrap();
 
-      console.log("[PerfilScreen] ✅ Biometría configurada exitosamente");
+      console.log("[PerfilScreen] Biometría configurada exitosamente");
       showSuccessToast("¡Listo!", "Biometría activada correctamente");
 
  
@@ -184,7 +217,7 @@ const PerfilScreen = () => {
   
       dispatch(checkBiometricAvailability(true));
     } catch (error) {
-      console.error("[PerfilScreen] ❌ Error habilitando biometría:", error);
+      console.error("[PerfilScreen] Error habilitando biometría:", error);
       if (
         error.toString().includes("cancelada") ||
         error.toString().includes("cancel")
@@ -224,8 +257,6 @@ const PerfilScreen = () => {
               style={styles.avatar}
             />
           </View>
-
-          {/* User Info */}
           <View style={styles.infoContainer}>
             <Text style={styles.subtitle}>Perfil</Text>
             <TextInput
@@ -235,9 +266,9 @@ const PerfilScreen = () => {
               placeholder="edita o agrega tu nombre"
               placeholderTextColor="#f9f9f9ff"
             />
+           
             <TextInput
               style={styles.input}
-              onChangeText={onChangeText2}
               value={text2}
               placeholder="edita o agrega tu email"
               placeholderTextColor="#f7f4f4ff"
@@ -245,9 +276,11 @@ const PerfilScreen = () => {
               autoCapitalize="none"
               editable={false}
             />
+             <Button mode="contained" onPress={putUsuario}>
+              Guardar cambios
+            </Button>
           </View>
 
-          {/* Biometric Status */}
           {biometricEnabled ? (
             <View style={styles.biometricEnabledContainer}>
               <View style={styles.infoRow}>
