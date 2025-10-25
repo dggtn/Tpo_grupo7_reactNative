@@ -38,13 +38,20 @@ export default function RootNavigator() {
   }, [isAuthenticated, token, showErrorScreen]);
 
   useEffect(() => {
-    // Cargar configuración inicial
     const initializeApp = async () => {
       try {
+        console.log('[RootNavigator] 🚀 Inicializando aplicación...');
+        
+        // Cargar configuración biométrica guardada
         await dispatch(loadBiometricConfig()).unwrap();
+        console.log('[RootNavigator] ✅ Configuración biométrica cargada');
+        
+        // Verificar disponibilidad de biometría
         await dispatch(checkBiometricAvailability()).unwrap();
+        console.log('[RootNavigator] ✅ Disponibilidad biométrica verificada');
+        
       } catch (error) {
-        console.error('Error initializing app:', error);
+        console.error('[RootNavigator] ❌ Error en inicialización:', error);
       } finally {
         setIsReady(true);
       }
@@ -55,7 +62,7 @@ export default function RootNavigator() {
 
   if (!isReady) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B1A1A1' }}>
         <ActivityIndicator size="large" color="#74C1E6" />
       </View>
     );
@@ -66,13 +73,22 @@ export default function RootNavigator() {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
+          // ✅ AGREGADO: Animación más suave
+          animation: 'fade',
         }}
       >
         {showErrorScreen ? (
           <Stack.Screen name="Error" component={ErrorScreen} />
         ) : isAuthenticated && token ? (
           <>
-            <Stack.Screen name="App" component={AppStack} />
+            <Stack.Screen 
+              name="App" 
+              component={AppStack}
+              options={{
+                // Evitar animación brusca al navegar desde login
+                animationTypeForReplace: 'pop',
+              }}
+            />
             <Stack.Screen 
               name="DetalleCurso" 
               component={DetalleCursoScreen}
@@ -87,7 +103,14 @@ export default function RootNavigator() {
             />
           </>
         ) : (
-          <Stack.Screen name="Auth" component={AuthStack} />
+          <Stack.Screen 
+            name="Auth" 
+            component={AuthStack}
+            options={{
+              // ✅ Mantener la pantalla de auth montada para el modal
+              animationEnabled: true,
+            }}
+          />
         )}
       </Stack.Navigator>
     </NavigationContainer>

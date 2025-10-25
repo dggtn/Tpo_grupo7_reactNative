@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
-import { login, selectAuthLoading } from '../../../store/slices/authSlice';
+import { login, selectAuthLoading, selectIsAuthenticated } from '../../../store/slices/authSlice';
 import {
   authenticateWithBiometric,
   selectBiometricEnabled,
@@ -32,8 +32,13 @@ export default function LoginScreen({ navigation }) {
   const [biometricTypeName, setBiometricTypeName] = useState('Huella Digital');
   const [showBiometricSetupModal, setShowBiometricSetupModal] = useState(false);
   
+  // ✅ NUEVO: Estado para controlar si se debe mostrar el modal después del login
+  const [pendingBiometricPrompt, setPendingBiometricPrompt] = useState(false);
+  const [loginSuccessEmail, setLoginSuccessEmail] = useState(null);
+  
   const dispatch = useDispatch();
   const isLoading = useSelector(selectAuthLoading);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
   const biometricEnabled = useSelector(selectBiometricEnabled);
   const biometricUserEmail = useSelector(selectBiometricUserEmail);
   const biometricAvailable = useSelector(selectBiometricAvailable);
@@ -42,6 +47,32 @@ export default function LoginScreen({ navigation }) {
     console.log('[LoginScreen] 🚀 Inicializando...');
     initializeScreen();
   }, []);
+
+  // ✅ NUEVO: Efecto para manejar el modal después de autenticación exitosa
+  useEffect(() => {
+    if (isAuthenticated && pendingBiometricPrompt && loginSuccessEmail) {
+      console.log('[LoginScreen] ✅ Usuario autenticado, evaluando mostrar modal biométrico');
+      
+      // Verificar si debe mostrar el modal
+      const shouldShowModal = shouldPromptBiometricSetup(loginSuccessEmail);
+      
+      if (shouldShowModal) {
+        console.log('[LoginScreen] 🔔 Mostrando modal de configuración biométrica');
+        // Pequeño delay para asegurar que la UI esté lista
+        const timer = setTimeout(() => {
+          setShowBiometricSetupModal(true);
+        }, 300);
+        
+        return () => clearTimeout(timer);
+      } else {
+        console.log('[LoginScreen] ⏭️ No se cumplieron condiciones para mostrar modal');
+      }
+      
+      // Limpiar flags
+      setPendingBiometricPrompt(false);
+      setLoginSuccessEmail(null);
+    }
+  }, [isAuthenticated, pendingBiometricPrompt, loginSuccessEmail]);
 
   const initializeScreen = async () => {
     try {
@@ -54,15 +85,45 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
+  /**
+   * ✅ NUEVA FUNCIÓN: Determina si debe mostrar el modal de configuración
+   */
+  const shouldPromptBiometricSetup = (userEmail) => {
+    console.log('[LoginScreen] 🔍 Evaluando condiciones para modal:');
+    console.log('  - Biometría disponible:', biometricAvailable);
+    console.log('  - Biometría habilitada:', biometricEnabled);
+    console.log('  - Email almacenado:', biometricUserEmail);
+    console.log('  - Email del login:', userEmail);
+    
+    // Condición 1: Biometría debe estar disponible en el dispositivo
+    if (!biometricAvailable) {
+      console.log('  ❌ Biometría no disponible en dispositivo');
+      return false;
+    }
+    
+    // Condición 2: Si NO está habilitada, mostrar modal
+    if (!biometricEnabled) {
+      console.log('  ✅ Biometría no habilitada, mostrar modal');
+      return true;
+    }
+    
+    // Condición 3: Si está habilitada pero para otro usuario, mostrar modal
+    if (biometricUserEmail && biometricUserEmail !== userEmail.toLowerCase()) {
+      console.log('  ✅ Usuario diferente al configurado, mostrar modal');
+      return true;
+    }
+    
+    console.log('  ❌ Usuario ya tiene biometría configurada');
+    return false;
+  };
+
   const handleBiometricLogin = async () => {
     try {
       console.log('[LoginScreen] 🔐 Iniciando login biométrico...');
       
-      // 1. Autenticar con biometría/PIN
       await dispatch(authenticateWithBiometric('Iniciar sesión con ' + biometricTypeName)).unwrap();
       console.log('[LoginScreen] ✅ Autenticación biométrica exitosa');
       
-      // 2. Recuperar credenciales guardadas
       const credentials = await getBiometricCredentials();
       
       if (!credentials || !credentials.email || !credentials.password) {
@@ -71,7 +132,6 @@ export default function LoginScreen({ navigation }) {
       
       console.log('[LoginScreen] 📧 Credenciales recuperadas para:', credentials.email);
       
-      // 3. Login normal con credenciales
       await dispatch(login({
         email: credentials.email,
         password: credentials.password
@@ -102,51 +162,50 @@ export default function LoginScreen({ navigation }) {
     }
 
     try {
-      console.log('[LoginScreen] 🔑 Iniciando login normal para:', email);
+      const normalizedEmail = email.trim().toLowerCase();
+      console.log('[LoginScreen] 🔑 Iniciando login normal para:', normalizedEmail);
+      
+      // ✅ CRÍTICO: Guardar email ANTES del login para usarlo después
+      setLoginSuccessEmail(normalizedEmail);
       
       await dispatch(login({ 
-        email: email.trim().toLowerCase(), 
+        email: normalizedEmail, 
         password 
       })).unwrap();
       
       console.log('[LoginScreen] ✅ Login exitoso');
       showSuccessToast('¡Bienvenido!', 'Has iniciado sesión correctamente');
       
-      // ✅ CRÍTICO: Verificar si debe mostrar modal biométrico
-      // Solo mostrar si:
-      // 1. Biometría disponible en dispositivo
-      // 2. Usuario NO tiene biometría habilitada
-      // 3. El email del login NO es el mismo que el de biometría guardada
-      if (biometricAvailable && 
-          (!biometricEnabled || biometricUserEmail !== email.trim().toLowerCase())) {
-        console.log('[LoginScreen] 🔔 Mostrando modal de configuración biométrica');
-        // Esperar un poco para que el login se complete
-        setTimeout(() => {
-          setShowBiometricSetupModal(true);
-        }, 500);
-      }
+      // ✅ CRÍTICO: Activar flag para evaluar modal en el próximo render
+      setPendingBiometricPrompt(true);
       
     } catch (error) {
       console.error('[LoginScreen] ❌ Error en login:', error);
       showErrorToast('Error', error || 'Credenciales inválidas');
+      
+      // Limpiar en caso de error
+      setLoginSuccessEmail(null);
+      setPendingBiometricPrompt(false);
     }
   };
 
   const handleBiometricSetupAccept = () => {
     console.log('[LoginScreen] ✅ Usuario aceptó configurar biometría');
     setShowBiometricSetupModal(false);
-    // Navegar al perfil para configurar
-    // La navegación se hace automáticamente al estar autenticado
+    // La navegación automática llevará al usuario al perfil
+    // donde podrá completar la configuración
   };
 
   const handleBiometricSetupDecline = () => {
-    console.log('[LoginScreen] ❌ Usuario rechazó biometría');
+    console.log('[LoginScreen] ❌ Usuario rechazó biometría permanentemente');
     setShowBiometricSetupModal(false);
+    // TODO: Opcional - guardar preferencia para no volver a preguntar
   };
 
   const handleBiometricSetupLater = () => {
     console.log('[LoginScreen] ⏰ Usuario pospuso biometría');
     setShowBiometricSetupModal(false);
+    // Se le volverá a preguntar en el próximo login
   };
 
   const shouldShowBiometricButton = biometricEnabled && 
@@ -266,9 +325,9 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Modal de Configuración Biométrica */}
+        {/* ✅ MODIFICADO: Modal con mejor control de visibilidad */}
         <BiometricPromptModal
-          visible={showBiometricSetupModal}
+          visible={showBiometricSetupModal && isAuthenticated}
           onAccept={handleBiometricSetupAccept}
           onDecline={handleBiometricSetupDecline}
           onLater={handleBiometricSetupLater}
