@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
- 
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,7 +27,6 @@ import {
   selectBiometricAvailable,
   checkBiometricAvailability,
   updateLastUsed,
-  
 } from '../../../store/slices/biometricSlice';
 import { setUserEmail } from '../../../store/slices/userSlice';
 import { showErrorToast, showSuccessToast } from '../../../utils/toastUtils';
@@ -53,7 +51,6 @@ export default function LoginScreen({ navigation }) {
   const [errors, setErrors] = useState({});
   const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
   const [biometricTypeName, setBiometricTypeName] = useState('Huella Digital');
-  const [justLoggedInEmail, setJustLoggedInEmail] = useState(null);
   const [justLoggedInData, setJustLoggedInData] = useState(null);
   const [isBiometricLoading, setIsBiometricLoading] = useState(false);
 
@@ -62,14 +59,10 @@ export default function LoginScreen({ navigation }) {
   }, []);
 
   const initializeScreen = async () => {
-    // Verificar disponibilidad de biometría
     dispatch(checkBiometricAvailability());
-    
-    // Cargar tipo de biometría
     const typeName = await getBiometricTypeName();
     setBiometricTypeName(typeName);
 
-    // Si hay biometría habilitada, pre-llenar el email
     if (biometricEnabled && biometricUserEmail) {
       setEmail(biometricUserEmail);
       console.log('[LoginScreen] Biometría habilitada para:', biometricUserEmail);
@@ -85,47 +78,47 @@ export default function LoginScreen({ navigation }) {
     setIsBiometricLoading(true);
 
     try {
-      console.log('[LoginScreen] Iniciando login biométrico...');
+      console.log('[LoginScreen] 🔐 Iniciando login biométrico...');
       
       // 1. Autenticar con biometría
       await dispatch(authenticateWithBiometric('Iniciar sesión con ' + biometricTypeName)).unwrap();
-      
-      console.log('[LoginScreen] Autenticación biométrica exitosa');
+      console.log('[LoginScreen] ✅ Autenticación biométrica exitosa');
       
       // 2. Obtener credenciales guardadas
       const credentials = await getBiometricCredentials();
       
-      if (!credentials) {
-        showErrorToast('Error', 'No se encontraron credenciales guardadas');
-        setIsBiometricLoading(false);
-        return;
+      if (!credentials || !credentials.password) {
+        throw new Error('No se encontraron credenciales guardadas');
       }
 
-      // 3. Hacer login con las credenciales
-      // NOTA: Aquí estamos usando las credenciales guardadas
-      // En producción, deberías usar un refresh token o sistema similar
+      console.log('[LoginScreen] 📧 Credenciales recuperadas para:', credentials.email);
+      
+      // 3. Hacer login con las credenciales EN TEXTO PLANO
       await dispatch(login({ 
         email: credentials.email, 
-        password: credentials.hashedPassword 
+        password: credentials.password // ✅ Enviar la contraseña original
       })).unwrap();
       
       // 4. Actualizar último uso
       await dispatch(updateLastUsed()).unwrap();
       
-      console.log('[LoginScreen] Login biométrico completo');
+      console.log('[LoginScreen] ✅ Login biométrico completo');
       showSuccessToast('Bienvenido', 'Inicio de sesión exitoso');
       
     } catch (error) {
-      console.error('[LoginScreen] Error en login biométrico:', error);
+      console.error('[LoginScreen] ❌ Error en login biométrico:', error);
       
-      // Si el error es por credenciales inválidas, desactivar biometría
-      if (error.includes('credenciales') || error.includes('401')) {
+      if (error.toString().includes('credenciales') || 
+          error.toString().includes('401') ||
+          error.toString().includes('Usuario o contraseña')) {
         showErrorToast(
-          'Credenciales Expiradas', 
-          'Por favor inicia sesión con tu contraseña'
+          'Credenciales Inválidas', 
+          'Por favor inicia sesión con tu contraseña nuevamente'
         );
-        // Opcional: desactivar biometría automáticamente
-        // await dispatch(disableBiometric());
+      } else if (error.toString().includes('cancelada') || 
+                 error.toString().includes('cancel')) {
+        // Usuario canceló, no mostrar error
+        console.log('[LoginScreen] Usuario canceló autenticación biométrica');
       } else {
         showErrorToast('Error', 'No se pudo autenticar con biometría');
       }
@@ -135,7 +128,6 @@ export default function LoginScreen({ navigation }) {
   };
 
   const handleLogin = async () => {
-    // Validar formulario
     const validation = validateLoginForm(email, password);
     if (!validation.valid) {
       setErrors(validation.errors);
@@ -145,32 +137,33 @@ export default function LoginScreen({ navigation }) {
     setErrors({});
 
     try {
-      console.log('[LoginScreen] Intentando login con:', email);
+      console.log('[LoginScreen] 🔑 Intentando login con:', email);
       
       // Realizar login
-      const result = await dispatch(login({ email, password })).unwrap();
+      await dispatch(login({ email, password })).unwrap();
       
-      console.log('[LoginScreen] Login exitoso');
+      console.log('[LoginScreen] ✅ Login exitoso');
       
       // Guardar email en el slice de usuario
       dispatch(setUserEmail(email));
       
-      // Guardar datos para configuración de biometría
+      // Guardar datos ANTES de mostrar el toast
       setJustLoggedInData({ email, password });
       
       showSuccessToast('Bienvenido', 'Inicio de sesión exitoso');
       
-      // Si la biometría está disponible y NO está habilitada, preguntar
+      // ✅ ESPERAR A QUE LA NAVEGACIÓN SE COMPLETE
+      // Usar un efecto para mostrar el modal DESPUÉS de que se monte la pantalla principal
       if (biometricAvailable && !biometricEnabled) {
-        console.log('[LoginScreen] Mostrando prompt de biometría');
-         // Esperar un poco para que el usuario vea la pantalla principal
+        console.log('[LoginScreen] 📱 Mostrando prompt de biometría después de navegación');
+        // Esperar más tiempo para asegurar que la navegación completó
         setTimeout(() => {
           setShowBiometricPrompt(true);
-        }, 1000);
+        }, 2000); // 2 segundos para dar tiempo a la navegación
       }
       
     } catch (error) {
-      console.error('[LoginScreen] Error en login:', error);
+      console.error('[LoginScreen] ❌ Error en login:', error);
       showErrorToast('Error', error || 'Error al iniciar sesión');
       setErrors({ general: error || 'Credenciales inválidas' });
     }
@@ -185,17 +178,16 @@ export default function LoginScreen({ navigation }) {
     }
 
     try {
-      console.log('[LoginScreen] Configurando biometría...');
+      console.log('[LoginScreen] 🔐 Configurando biometría...');
       
       // 1. Autenticar para verificar que funciona
       await dispatch(authenticateWithBiometric('Configurar ' + biometricTypeName)).unwrap();
-      
-      console.log('[LoginScreen] Prueba biométrica exitosa');
+      console.log('[LoginScreen] ✅ Prueba biométrica exitosa');
       
       // 2. Guardar credenciales de forma segura
       const saved = await saveBiometricCredentials(
         justLoggedInData.email,
-        justLoggedInData.password
+        justLoggedInData.password // ⚠️ EN PRODUCCIÓN: Usar refresh token
       );
       
       if (!saved) {
@@ -205,28 +197,33 @@ export default function LoginScreen({ navigation }) {
       // 3. Habilitar biometría en el estado
       await dispatch(enableBiometric(justLoggedInData.email)).unwrap();
       
-      console.log('[LoginScreen] Biometría configurada exitosamente');
+      console.log('[LoginScreen] ✅ Biometría configurada exitosamente');
       showSuccessToast('¡Listo!', 'Biometría activada correctamente');
       
       // Limpiar datos temporales
       setJustLoggedInData(null);
       
     } catch (error) {
-      console.error('[LoginScreen] Error configurando biometría:', error);
-      showErrorToast('Error', 'No se pudo activar la biometría');
+      console.error('[LoginScreen] ❌ Error configurando biometría:', error);
+      if (error.toString().includes('cancelada') || error.toString().includes('cancel')) {
+        // Usuario canceló, no mostrar error
+        console.log('[LoginScreen] Usuario canceló configuración');
+      } else {
+        showErrorToast('Error', 'No se pudo activar la biometría');
+      }
     }
   };
 
   const handleBiometricPromptDecline = () => {
     setShowBiometricPrompt(false);
     setJustLoggedInData(null);
-    console.log('[LoginScreen] Usuario rechazó biometría');
+    console.log('[LoginScreen] ❌ Usuario rechazó biometría');
   };
 
   const handleBiometricPromptLater = () => {
     setShowBiometricPrompt(false);
-    // NO limpiar justLoggedInData para poder preguntar después
-    console.log('[LoginScreen] Usuario pospuso decisión de biometría');
+    // NO limpiar justLoggedInData
+    console.log('[LoginScreen] ⏰ Usuario pospuso decisión de biometría');
   };
 
   return (
@@ -308,7 +305,11 @@ export default function LoginScreen({ navigation }) {
                 <ActivityIndicator color="#74C1E6" />
               ) : (
                 <>
-                  <Ionicons name="finger-print" size={24} color="#74C1E6" />
+                  <Ionicons 
+                    name={biometricTypeName === 'PIN del Dispositivo' ? 'keypad' : 'finger-print'} 
+                    size={24} 
+                    color="#74C1E6" 
+                  />
                   <Text style={styles.biometricButtonText}>
                     Usar {biometricTypeName}
                   </Text>
@@ -316,6 +317,7 @@ export default function LoginScreen({ navigation }) {
               )}
             </TouchableOpacity>
           )}
+
 
           {/* Register Link */}
           <View style={styles.registerContainer}>
@@ -342,7 +344,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#B1A1A1',
   },
   scrollContent: {
     flexGrow: 1,
@@ -356,7 +358,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#74C1E6',
+    color: '#121212',
     marginTop: 10,
   },
   subtitle: {

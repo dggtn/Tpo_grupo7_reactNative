@@ -25,7 +25,7 @@ export default function BiometricPromptModal({
           </Text>
           
           <Text style={styles.modalMessage}>
-            Puedes usar {biometricType} para iniciar sesión más rápido y de forma segura.
+            Puedes usar {biometricType === 'PIN del Dispositivo' ? 'el PIN de tu dispositivo' : biometricType} para iniciar sesión más rápido y de forma segura.
           </Text>
 
           <View style={styles.benefitsList}>

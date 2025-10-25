@@ -57,6 +57,18 @@ const PerfilScreen = () => {
   const [passwordForBiometric, setPasswordForBiometric] = useState('');
   const [biometricTypeName, setBiometricTypeName] = useState('Huella Digital');
   
+useEffect(() => {
+  const debugBiometric = async () => {
+    const info = await getBiometricInfo();
+    console.log('🔍 DEBUG BIOMETRIC INFO:', JSON.stringify(info, null, 2));
+  };
+  
+  debugBiometric();
+  initializeScreen();
+}, [token]);
+
+
+
   useEffect(() => {
     console.log('[PerfilScreen] Montando componente');
     initializeScreen();
@@ -149,46 +161,49 @@ const PerfilScreen = () => {
   };
 
   const performEnableBiometric = async () => {
-    if (!passwordForBiometric.trim()) {
-      showErrorToast('Error', 'Debes ingresar tu contraseña');
-      return;
+  if (!passwordForBiometric.trim()) {
+    showErrorToast('Error', 'Debes ingresar tu contraseña');
+    return;
+  }
+
+  setShowPasswordPrompt(false);
+
+  try {
+    console.log('[PerfilScreen] 🔐 Habilitando biometría para:', usuario.email);
+    
+    // 1. Autenticar para verificar que funciona
+    await dispatch(authenticateWithBiometric('Configurar ' + biometricTypeName)).unwrap();
+    console.log('[PerfilScreen] ✅ Prueba biométrica exitosa');
+    
+    // 2. Guardar credenciales de forma segura (EN TEXTO PLANO para que funcione con el backend)
+    const saved = await saveBiometricCredentials(
+      usuario.email,
+      passwordForBiometric // ⚠️ EN PRODUCCIÓN: Usar refresh token
+    );
+    
+    if (!saved) {
+      throw new Error('No se pudieron guardar las credenciales');
     }
-
-    setShowPasswordPrompt(false);
-
-    try {
-      console.log('[PerfilScreen] Habilitando biometría para:', usuario.email);
-      
-      // 1. Autenticar para verificar que funciona
-      await dispatch(authenticateWithBiometric('Configurar ' + biometricTypeName)).unwrap();
-      
-      console.log('[PerfilScreen] Prueba biométrica exitosa');
-      
-      // 2. Guardar credenciales de forma segura
-      const saved = await saveBiometricCredentials(
-        usuario.email,
-        passwordForBiometric
-      );
-      
-      if (!saved) {
-        throw new Error('No se pudieron guardar las credenciales');
-      }
-      
-      // 3. Habilitar biometría en el estado
-      await dispatch(enableBiometric(usuario.email)).unwrap();
-      
-      console.log('[PerfilScreen] Biometría configurada exitosamente');
-      showSuccessToast('¡Listo!', 'Biometría activada correctamente');
-      
-      // Limpiar contraseña
-      setPasswordForBiometric('');
-      
-    } catch (error) {
-      console.error('[PerfilScreen] Error habilitando biometría:', error);
+    
+    // 3. Habilitar biometría en el estado
+    await dispatch(enableBiometric(usuario.email)).unwrap();
+    
+    console.log('[PerfilScreen] ✅ Biometría configurada exitosamente');
+    showSuccessToast('¡Listo!', 'Biometría activada correctamente');
+    
+    // Limpiar contraseña
+    setPasswordForBiometric('');
+    
+  } catch (error) {
+    console.error('[PerfilScreen] ❌ Error habilitando biometría:', error);
+    if (error.toString().includes('cancelada') || error.toString().includes('cancel')) {
+      console.log('[PerfilScreen] Usuario canceló configuración');
+    } else {
       showErrorToast('Error', 'No se pudo activar la biometría');
-      setPasswordForBiometric('');
     }
-  };
+    setPasswordForBiometric('');
+  }
+};
 
   const handleBiometricSetupAccept = () => {
     setShowBiometricSetupModal(false);
@@ -241,45 +256,51 @@ const PerfilScreen = () => {
           </View>
 
           {/* Biometric Status o Enable Button */}
-          {biometricEnabled ? (
+            {biometricEnabled ? (
             <View style={styles.biometricEnabledContainer}>
-              <View style={styles.infoRow}>
-                <Ionicons name="finger-print" size={24} color="#4CAF50" />
+                <View style={styles.infoRow}>
+                <Ionicons name="shield-checkmark" size={24} color="#4CAF50" />
                 <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoLabel}>Biometría:</Text>
-                  <Text style={[styles.infoValue, { color: '#4CAF50' }]}>
+                    <Text style={styles.infoLabel}>Autenticación Segura:</Text>
+                    <Text style={[styles.infoValue, { color: '#4CAF50' }]}>
                     Activa ({biometricTypeName})
-                  </Text>
+                    </Text>
                 </View>
                 <TouchableOpacity onPress={handleDisableBiometric}>
-                  <Ionicons name="close-circle-outline" size={24} color="#f44336" />
+                    <Ionicons name="close-circle-outline" size={24} color="#f44336" />
                 </TouchableOpacity>
-              </View>
+                </View>
             </View>
-          ) : biometricAvailable ? (
+            ) : biometricAvailable ? (
             <TouchableOpacity
-              style={styles.enableBiometricButton}
-              onPress={() => setShowBiometricSetupModal(true)}
+                style={styles.enableBiometricButton}
+                onPress={() => setShowBiometricSetupModal(true)}
             >
-              <Ionicons name="finger-print" size={28} color="#74C1E6" />
-              <View style={styles.enableBiometricTextContainer}>
+                <Ionicons 
+                name={biometricTypeName === 'PIN del Dispositivo' ? 'keypad' : 'finger-print'} 
+                size={28} 
+                color="#74C1E6" 
+                />
+                <View style={styles.enableBiometricTextContainer}>
                 <Text style={styles.enableBiometricTitle}>
-                  Activar {biometricTypeName}
+                    Activar {biometricTypeName}
                 </Text>
                 <Text style={styles.enableBiometricSubtitle}>
-                  Inicia sesión más rápido y seguro
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={24} color="#74C1E6" />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.biometricUnavailableContainer}>
-              <Ionicons name="alert-circle-outline" size={24} color="#FF9800" />
-              <Text style={styles.biometricUnavailableText}>
-                Biometría no disponible en este dispositivo
-              </Text>
-            </View>
-          )}
+                    {biometricTypeName === 'PIN del Dispositivo' 
+                    ? 'Usa el PIN de tu dispositivo para iniciar sesión'
+                                : 'Inicia sesión más rápido y seguro'}
+                                </Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={24} color="#74C1E6" />
+                </TouchableOpacity>
+                ) : (
+                <View style={styles.biometricUnavailableContainer}>
+                    <Ionicons name="alert-circle-outline" size={24} color="#FF9800" />
+                    <Text style={styles.biometricUnavailableText}>
+                    No hay seguridad configurada en este dispositivo. Configura un PIN, patrón o huella digital en la configuración de tu dispositivo.
+                    </Text>
+                </View>
+        )}
 
           {/* Logout Button */}
           <TouchableOpacity

@@ -11,13 +11,25 @@ export const checkBiometricAvailability = createAsyncThunk(
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
       
+      // ✅ MODIFICADO: Aceptar como disponible si tiene hardware Y está enrollado
+      // (esto incluye PIN/Patrón como alternativa)
+      const isAvailable = hasHardware && isEnrolled;
+      
+      console.log('[BiometricSlice] Availability Check:', {
+        hasHardware,
+        isEnrolled,
+        supportedTypes,
+        isAvailable
+      });
+      
       return {
         hasHardware,
         isEnrolled,
         supportedTypes,
-        isAvailable: hasHardware && isEnrolled,
+        isAvailable,
       };
     } catch (error) {
+      console.error('[BiometricSlice] Error checking availability:', error);
       return rejectWithValue('Error verificando biometría');
     }
   }

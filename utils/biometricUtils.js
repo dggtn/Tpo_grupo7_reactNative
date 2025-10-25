@@ -13,7 +13,7 @@ export const hasHardware = async () => {
 };
 
 /**
- * Verifica si hay datos biométricos enrollados
+ * Verifica si hay datos biométricos o PIN enrollados
  */
 export const isEnrolled = async () => {
   try {
@@ -38,13 +38,19 @@ export const getSupportedAuthTypes = async () => {
 };
 
 /**
- * Verifica disponibilidad completa de biometría
+ * Verifica disponibilidad completa de autenticación (biometría O PIN)
+ * ✅ MODIFICADO: Ahora acepta PIN como válido
  */
 export const isBiometricAvailable = async () => {
   try {
     const hardware = await hasHardware();
     const enrolled = await isEnrolled();
-    return hardware && enrolled;
+    
+    // ✅ Si tiene hardware Y algo enrollado (biometría o PIN), está disponible
+    const available = hardware && enrolled;
+    
+    console.log('[BiometricUtils] Hardware:', hardware, '| Enrolled:', enrolled, '| Available:', available);
+    return available;
   } catch (error) {
     console.error('Error checking biometric availability:', error);
     return false;
@@ -52,39 +58,60 @@ export const isBiometricAvailable = async () => {
 };
 
 /**
- * Obtiene nombre del tipo de biometría disponible
+ * Obtiene nombre del tipo de autenticación disponible
+ * ✅ MODIFICADO: Detecta si es biometría real o fallback a PIN
  */
 export const getBiometricTypeName = async () => {
   try {
     const types = await getSupportedAuthTypes();
     
+    console.log('[BiometricUtils] Tipos soportados:', types);
+    
+    // Si tiene Face ID
     if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
       return 'Face ID';
     }
+    
+    // Si tiene huella digital
     if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-      return 'Touch ID / Huella Digital';
+      return 'Huella Digital';
     }
+    
+    // Si tiene iris
     if (types.includes(LocalAuthentication.AuthenticationType.IRIS)) {
       return 'Reconocimiento de Iris';
     }
     
-    return 'Autenticación Biométrica';
+    // ✅ Si no tiene biometría real, pero está enrollado, usa PIN/Patrón
+    const enrolled = await isEnrolled();
+    if (enrolled) {
+      return 'PIN del Dispositivo';
+    }
+    
+    return 'Autenticación del Dispositivo';
   } catch (error) {
-    return 'Autenticación Biométrica';
+    console.error('[BiometricUtils] Error getting biometric type:', error);
+    return 'Autenticación del Dispositivo';
   }
 };
 
 /**
- * Autentica con biometría
+ * Autentica con biometría O PIN del dispositivo
+ * ✅ MODIFICADO: Permite fallback a credenciales del dispositivo
  */
-export const authenticate = async (promptMessage = 'Autenticación biométrica') => {
+export const authenticate = async (promptMessage = 'Autenticación requerida') => {
   try {
+    console.log('[BiometricUtils] 🔐 Iniciando autenticación...');
+    
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage,
       cancelLabel: 'Cancelar',
+      // ✅ CRÍTICO: Permitir fallback a PIN/patrón/contraseña del dispositivo
       disableDeviceFallback: false,
-      fallbackLabel: 'Usar PIN',
+      fallbackLabel: 'Usar PIN del dispositivo',
     });
+    
+    console.log('[BiometricUtils] Resultado:', result);
     
     return result;
   } catch (error) {
@@ -112,16 +139,17 @@ export const formatBiometricError = (errorCode) => {
     'system_cancel': 'Autenticación cancelada por el sistema',
     'authentication_failed': 'Autenticación fallida',
     'user_fallback': 'Usuario eligió usar fallback',
-    'biometric_lockout': 'Biometría bloqueada por demasiados intentos',
-    'biometric_lockout_permanent': 'Biometría bloqueada permanentemente',
-    'no_biometrics': 'No hay datos biométricos configurados',
+    'biometric_lockout': 'Autenticación bloqueada por demasiados intentos',
+    'biometric_lockout_permanent': 'Autenticación bloqueada permanentemente',
+    'no_biometrics': 'No hay datos de autenticación configurados',
   };
   
-  return errorMessages[errorCode] || 'Error de autenticación biométrica';
+  return errorMessages[errorCode] || 'Error de autenticación';
 };
 
 /**
  * Obtiene información detallada de capacidades biométricas
+ * ✅ MODIFICADO: Incluye información sobre PIN
  */
 export const getBiometricInfo = async () => {
   try {
@@ -131,12 +159,28 @@ export const getBiometricInfo = async () => {
     const available = hardware && enrolled;
     const typeName = await getBiometricTypeName();
     
+    // ✅ Detectar si tiene biometría real o solo PIN
+    const hasBiometricData = types.length > 0;
+    const hasOnlyPIN = enrolled && !hasBiometricData;
+    
+    console.log('[BiometricUtils] Info completa:', {
+      hardware,
+      enrolled,
+      types,
+      available,
+      typeName,
+      hasBiometricData,
+      hasOnlyPIN
+    });
+    
     return {
       hardware,
       enrolled,
       types,
       available,
       typeName,
+      hasBiometricData,
+      hasOnlyPIN,
     };
   } catch (error) {
     console.error('Error getting biometric info:', error);
@@ -146,6 +190,44 @@ export const getBiometricInfo = async () => {
       types: [],
       available: false,
       typeName: 'No disponible',
+      hasBiometricData: false,
+      hasOnlyPIN: false,
     };
   }
+};
+
+/**
+ * ✅ NUEVA FUNCIÓN: Verifica si el dispositivo tiene seguridad configurada
+ */
+export const hasDeviceSecurity = async () => {
+  try {
+    // Si está enrollado, significa que tiene PIN, patrón, contraseña o biometría
+    const enrolled = await isEnrolled();
+    console.log('[BiometricUtils] Seguridad del dispositivo configurada:', enrolled);
+    return enrolled;
+  } catch (error) {
+    console.error('Error checking device security:', error);
+    return false;
+  }
+};
+
+/**
+ * ✅ NUEVA FUNCIÓN: Obtiene un mensaje descriptivo sobre el tipo de seguridad
+ */
+export const getSecurityTypeMessage = async () => {
+  const info = await getBiometricInfo();
+  
+  if (!info.available) {
+    return 'No hay seguridad configurada en el dispositivo';
+  }
+  
+  if (info.hasBiometricData) {
+    return `Autenticación biométrica disponible: ${info.typeName}`;
+  }
+  
+  if (info.hasOnlyPIN) {
+    return 'Autenticación con PIN/Patrón del dispositivo disponible';
+  }
+  
+  return 'Autenticación del dispositivo disponible';
 };
