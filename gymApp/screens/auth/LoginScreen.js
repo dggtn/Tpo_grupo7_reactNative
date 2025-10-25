@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Modal,
+ 
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,201 +21,274 @@ import {
   selectAuthError,
 } from '../../../store/slices/authSlice';
 import {
-  checkBiometricAvailability,
   authenticateWithBiometric,
-  loadBiometricConfig,
   enableBiometric,
-  selectBiometric,
-  selectShouldRequestBiometric,
+  selectBiometricEnabled,
+  selectBiometricUserEmail,
+  selectBiometricAvailable,
+  checkBiometricAvailability,
+  updateLastUsed,
+  
 } from '../../../store/slices/biometricSlice';
 import { setUserEmail } from '../../../store/slices/userSlice';
-import { VALIDATION } from '../../../config/constants';
-import { 
-  showErrorToast, 
-  showSuccessToast, 
-  showWarningToast,
-  showInfoToast 
-} from '../../../utils/toastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/toastUtils';
+import { validateLoginForm } from '../../../utils/validationUtils';
+import BiometricPromptModal from '../../components/BiometricPromptModal';
+import { getBiometricTypeName } from '../../../utils/biometricUtils';
+import {
+  saveBiometricCredentials,
+  getBiometricCredentials,
+} from '../../../utils/biometricStorageUtils';
 
 export default function LoginScreen({ navigation }) {
   const dispatch = useDispatch();
   const isLoading = useSelector(selectAuthLoading);
-  const error = useSelector(selectAuthError);
-  const biometric = useSelector(selectBiometric);
-  const shouldRequestBiometric = useSelector(selectShouldRequestBiometric);
+  const biometricEnabled = useSelector(selectBiometricEnabled);
+  const biometricUserEmail = useSelector(selectBiometricUserEmail);
+  const biometricAvailable = useSelector(selectBiometricAvailable);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
-  const [showBiometricDialog, setShowBiometricDialog] = useState(false);
-  const [biometricDialogType, setBiometricDialogType] = useState(null);
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
+  const [biometricTypeName, setBiometricTypeName] = useState('Huella Digital');
+  const [justLoggedInEmail, setJustLoggedInEmail] = useState(null);
+  const [justLoggedInData, setJustLoggedInData] = useState(null);
+  const [isBiometricLoading, setIsBiometricLoading] = useState(false);
 
   useEffect(() => {
-    dispatch(loadBiometricConfig());
-    dispatch(checkBiometricAvailability());
-
-    if (biometric.userEmail) {
-      setEmail(biometric.userEmail);
-    }
+    initializeScreen();
   }, []);
 
-  useEffect(() => {
-    if (shouldRequestBiometric && biometric.userEmail) {
-      handleBiometricLogin();
-    }
-  }, [shouldRequestBiometric]);
+  const initializeScreen = async () => {
+    // Verificar disponibilidad de biometría
+    dispatch(checkBiometricAvailability());
+    
+    // Cargar tipo de biometría
+    const typeName = await getBiometricTypeName();
+    setBiometricTypeName(typeName);
 
-  useEffect(() => {
-    if (error) {
-      showErrorToast('Error', error);
-      dispatch(clearError());
-    }
-  }, [error]);
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!email.trim()) {
-      newErrors.email = 'Email requerido';
-    } else if (!VALIDATION.EMAIL_REGEX.test(email)) {
-      newErrors.email = 'Email inválido';
-    }
-
-    if (!password.trim()) {
-      newErrors.password = 'Contraseña requerida';
-    } else if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
-      newErrors.password = `Mínimo ${VALIDATION.PASSWORD_MIN_LENGTH} caracteres`;
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleLogin = async () => {
-    if (!validateForm()) return;
-
-    try {
-      const result = await dispatch(login({ email, password })).unwrap();
-      
-      dispatch(setUserEmail(email));
-      showSuccessToast('Login exitoso', 'Bienvenido de vuelta');
-
-      if (biometric.isAvailable && !biometric.enabled) {
-        setBiometricDialogType('enroll');
-        setShowBiometricDialog(true);
-      } else if (biometric.enabled && biometric.userEmail !== email) {
-        setBiometricDialogType('update');
-        setShowBiometricDialog(true);
-      }
-    } catch (err) {
-      console.error('Login error:', err);
+    // Si hay biometría habilitada, pre-llenar el email
+    if (biometricEnabled && biometricUserEmail) {
+      setEmail(biometricUserEmail);
+      console.log('[LoginScreen] Biometría habilitada para:', biometricUserEmail);
     }
   };
 
   const handleBiometricLogin = async () => {
+    if (!biometricEnabled || !biometricUserEmail) {
+      showErrorToast('Error', 'Biometría no configurada');
+      return;
+    }
+
+    setIsBiometricLoading(true);
+
     try {
-      await dispatch(authenticateWithBiometric('Acceso rápido con biometría')).unwrap();
-      showSuccessToast('Éxito', 'Acceso biométrico exitoso');
-    } catch (err) {
-      showWarningToast(
-        'Error biométrico',
-        '¿Deseas iniciar sesión con contraseña?'
-      );
+      console.log('[LoginScreen] Iniciando login biométrico...');
+      
+      // 1. Autenticar con biometría
+      await dispatch(authenticateWithBiometric('Iniciar sesión con ' + biometricTypeName)).unwrap();
+      
+      console.log('[LoginScreen] Autenticación biométrica exitosa');
+      
+      // 2. Obtener credenciales guardadas
+      const credentials = await getBiometricCredentials();
+      
+      if (!credentials) {
+        showErrorToast('Error', 'No se encontraron credenciales guardadas');
+        setIsBiometricLoading(false);
+        return;
+      }
+
+      // 3. Hacer login con las credenciales
+      // NOTA: Aquí estamos usando las credenciales guardadas
+      // En producción, deberías usar un refresh token o sistema similar
+      await dispatch(login({ 
+        email: credentials.email, 
+        password: credentials.hashedPassword 
+      })).unwrap();
+      
+      // 4. Actualizar último uso
+      await dispatch(updateLastUsed()).unwrap();
+      
+      console.log('[LoginScreen] Login biométrico completo');
+      showSuccessToast('Bienvenido', 'Inicio de sesión exitoso');
+      
+    } catch (error) {
+      console.error('[LoginScreen] Error en login biométrico:', error);
+      
+      // Si el error es por credenciales inválidas, desactivar biometría
+      if (error.includes('credenciales') || error.includes('401')) {
+        showErrorToast(
+          'Credenciales Expiradas', 
+          'Por favor inicia sesión con tu contraseña'
+        );
+        // Opcional: desactivar biometría automáticamente
+        // await dispatch(disableBiometric());
+      } else {
+        showErrorToast('Error', 'No se pudo autenticar con biometría');
+      }
+    } finally {
+      setIsBiometricLoading(false);
     }
   };
 
-  const handleEnableBiometric = async () => {
-    setShowBiometricDialog(false);
+  const handleLogin = async () => {
+    // Validar formulario
+    const validation = validateLoginForm(email, password);
+    if (!validation.valid) {
+      setErrors(validation.errors);
+      return;
+    }
+
+    setErrors({});
+
     try {
-      await dispatch(authenticateWithBiometric('Activar autenticación biométrica')).unwrap();
-      await dispatch(enableBiometric(email)).unwrap();
-      showSuccessToast('Éxito', 'Autenticación biométrica activada');
-    } catch (err) {
+      console.log('[LoginScreen] Intentando login con:', email);
+      
+      // Realizar login
+      const result = await dispatch(login({ email, password })).unwrap();
+      
+      console.log('[LoginScreen] Login exitoso');
+      
+      // Guardar email en el slice de usuario
+      dispatch(setUserEmail(email));
+      
+      // Guardar datos para configuración de biometría
+      setJustLoggedInData({ email, password });
+      
+      showSuccessToast('Bienvenido', 'Inicio de sesión exitoso');
+      
+      // Si la biometría está disponible y NO está habilitada, preguntar
+      if (biometricAvailable && !biometricEnabled) {
+        console.log('[LoginScreen] Mostrando prompt de biometría');
+         // Esperar un poco para que el usuario vea la pantalla principal
+        setTimeout(() => {
+          setShowBiometricPrompt(true);
+        }, 1000);
+      }
+      
+    } catch (error) {
+      console.error('[LoginScreen] Error en login:', error);
+      showErrorToast('Error', error || 'Error al iniciar sesión');
+      setErrors({ general: error || 'Credenciales inválidas' });
+    }
+  };
+
+  const handleBiometricPromptAccept = async () => {
+    setShowBiometricPrompt(false);
+    
+    if (!justLoggedInData) {
+      showErrorToast('Error', 'No se pudieron guardar las credenciales');
+      return;
+    }
+
+    try {
+      console.log('[LoginScreen] Configurando biometría...');
+      
+      // 1. Autenticar para verificar que funciona
+      await dispatch(authenticateWithBiometric('Configurar ' + biometricTypeName)).unwrap();
+      
+      console.log('[LoginScreen] Prueba biométrica exitosa');
+      
+      // 2. Guardar credenciales de forma segura
+      const saved = await saveBiometricCredentials(
+        justLoggedInData.email,
+        justLoggedInData.password
+      );
+      
+      if (!saved) {
+        throw new Error('No se pudieron guardar las credenciales');
+      }
+      
+      // 3. Habilitar biometría en el estado
+      await dispatch(enableBiometric(justLoggedInData.email)).unwrap();
+      
+      console.log('[LoginScreen] Biometría configurada exitosamente');
+      showSuccessToast('¡Listo!', 'Biometría activada correctamente');
+      
+      // Limpiar datos temporales
+      setJustLoggedInData(null);
+      
+    } catch (error) {
+      console.error('[LoginScreen] Error configurando biometría:', error);
       showErrorToast('Error', 'No se pudo activar la biometría');
     }
   };
 
-  const handleUpdateBiometric = async () => {
-    setShowBiometricDialog(false);
-    try {
-      await dispatch(authenticateWithBiometric('Actualizar configuración')).unwrap();
-      await dispatch(enableBiometric(email)).unwrap();
-      showSuccessToast('Éxito', 'Biometría actualizada');
-    } catch (err) {
-      showErrorToast('Error', 'No se pudo actualizar la biometría');
-    }
+  const handleBiometricPromptDecline = () => {
+    setShowBiometricPrompt(false);
+    setJustLoggedInData(null);
+    console.log('[LoginScreen] Usuario rechazó biometría');
+  };
+
+  const handleBiometricPromptLater = () => {
+    setShowBiometricPrompt(false);
+    // NO limpiar justLoggedInData para poder preguntar después
+    console.log('[LoginScreen] Usuario pospuso decisión de biometría');
   };
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.logoContainer}>
-          <Image
-            source={require('../../../assets/adaptive-icon.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.header}>
+          <Ionicons name="barbell" size={64} color="#74C1E6" />
+          <Text style={styles.title}>RitmoFit</Text>
+          <Text style={styles.subtitle}>Bienvenido de vuelta</Text>
         </View>
 
-        <Text style={styles.title}>Iniciar Sesión</Text>
-
-        <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
-          <TextInput
-            style={[styles.input, errors.email && styles.inputError]}
-            placeholder="Ingresa tu email"
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              if (errors.email) setErrors({ ...errors, email: null });
-            }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!isLoading}
-          />
-        </View>
-        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-
-        <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-          <TextInput
-            style={[styles.input, errors.password && styles.inputError]}
-            placeholder="Contraseña"
-            value={password}
-            onChangeText={(text) => {
-              setPassword(text);
-              if (errors.password) setErrors({ ...errors, password: null });
-            }}
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            editable={!isLoading}
-          />
-          <TouchableOpacity
-            onPress={() => setShowPassword(!showPassword)}
-            style={styles.eyeIcon}
-          >
-            <Ionicons
-              name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-              size={20}
-              color="#666"
+        <View style={styles.form}>
+          {/* Email Input */}
+          <View style={styles.inputContainer}>
+            <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!isLoading && !isBiometricLoading}
             />
-          </TouchableOpacity>
-        </View>
-        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+          </View>
+          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-        <View style={styles.loginButtonsContainer}>
+          {/* Password Input */}
+          <View style={styles.inputContainer}>
+            <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Contraseña"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              editable={!isLoading && !isBiometricLoading}
+            />
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              style={styles.eyeIcon}
+            >
+              <Ionicons
+                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color="#666"
+              />
+            </TouchableOpacity>
+          </View>
+          {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+          {errors.general && <Text style={styles.errorText}>{errors.general}</Text>}
+
+          {/* Login Button */}
           <TouchableOpacity
-            style={[styles.loginButton, isLoading && styles.buttonDisabled]}
+            style={[styles.loginButton, (isLoading || isBiometricLoading) && styles.buttonDisabled]}
             onPress={handleLogin}
-            disabled={isLoading}
+            disabled={isLoading || isBiometricLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
@@ -224,73 +297,44 @@ export default function LoginScreen({ navigation }) {
             )}
           </TouchableOpacity>
 
-          {biometric.isAvailable && biometric.enabled && (
+          {/* Biometric Login Button */}
+          {biometricEnabled && biometricUserEmail === email && (
             <TouchableOpacity
-              style={styles.biometricButton}
+              style={[styles.biometricButton, isBiometricLoading && styles.buttonDisabled]}
               onPress={handleBiometricLogin}
-              disabled={isLoading}
+              disabled={isLoading || isBiometricLoading}
             >
-              <Ionicons name="finger-print" size={28} color="#74C1E6" />
+              {isBiometricLoading ? (
+                <ActivityIndicator color="#74C1E6" />
+              ) : (
+                <>
+                  <Ionicons name="finger-print" size={24} color="#74C1E6" />
+                  <Text style={styles.biometricButtonText}>
+                    Usar {biometricTypeName}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
           )}
-        </View>
 
-        <TouchableOpacity
-          style={styles.registerButton}
-          onPress={() => navigation.navigate('Register')}
-          disabled={isLoading}
-        >
-          <Text style={styles.registerButtonText}>Registrarse</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.recoveryButton}
-          onPress={() => navigation.navigate('Recovery')}
-          disabled={isLoading}
-        >
-          <Text style={styles.recoveryButtonText}>Recuperar Acceso</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      {/* Biometric Dialog Modal */}
-      <Modal
-        visible={showBiometricDialog}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowBiometricDialog(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Ionicons name="finger-print" size={48} color="#74C1E6" />
-            <Text style={styles.modalTitle}>
-              {biometricDialogType === 'enroll' 
-                ? 'Activar Autenticación Biométrica' 
-                : 'Actualizar Autenticación Biométrica'}
-            </Text>
-            <Text style={styles.modalMessage}>
-              {biometricDialogType === 'enroll'
-                ? '¿Quieres activar el acceso rápido con huella digital o reconocimiento facial?'
-                : `La biometría está configurada para ${biometric.userEmail}. ¿Quieres actualizarla para tu cuenta actual?`}
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalButtonSecondary}
-                onPress={() => setShowBiometricDialog(false)}
-              >
-                <Text style={styles.modalButtonSecondaryText}>Ahora no</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalButtonPrimary}
-                onPress={biometricDialogType === 'enroll' ? handleEnableBiometric : handleUpdateBiometric}
-              >
-                <Text style={styles.modalButtonPrimaryText}>
-                  {biometricDialogType === 'enroll' ? 'Activar' : 'Actualizar'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+          {/* Register Link */}
+          <View style={styles.registerContainer}>
+            <Text style={styles.registerText}>¿No tienes cuenta? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.registerLink}>Regístrate</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </ScrollView>
+
+      {/* Biometric Prompt Modal */}
+      <BiometricPromptModal
+        visible={showBiometricPrompt}
+        onAccept={handleBiometricPromptAccept}
+        onDecline={handleBiometricPromptDecline}
+        onLater={handleBiometricPromptLater}
+        biometricType={biometricTypeName}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -298,164 +342,102 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#B1A1A1',
+    backgroundColor: '#fff',
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
   },
-  logoContainer: {
+  header: {
     alignItems: 'center',
-    marginBottom: 30,
-  },
-  logo: {
-    width: 200,
-    height: 100,
+    marginBottom: 40,
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 30,
-    color: '#121212',
+    color: '#74C1E6',
+    marginTop: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 5,
+  },
+  form: {
+    width: '100%',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
     borderRadius: 8,
-    paddingHorizontal: 15,
-    marginBottom: 5,
-    height: 50,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f9f9f9',
   },
   inputIcon: {
-    marginRight: 10,
+    marginRight: 8,
   },
   input: {
     flex: 1,
+    height: 50,
     fontSize: 16,
   },
-  inputError: {
-    borderColor: '#f44336',
-    borderWidth: 1,
-  },
   eyeIcon: {
-    padding: 5,
+    padding: 8,
   },
   errorText: {
     color: '#f44336',
     fontSize: 12,
-    marginBottom: 10,
-    marginLeft: 5,
-  },
-  loginButtonsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    gap: 10,
+    marginBottom: 8,
+    marginLeft: 4,
   },
   loginButton: {
     backgroundColor: '#74C1E6',
     paddingVertical: 15,
-    paddingHorizontal: 40,
     borderRadius: 8,
-    minWidth: 140,
     alignItems: 'center',
+    marginTop: 20,
   },
   loginButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  biometricButton: {
-    backgroundColor: '#fff',
-    width: 53,
-    height: 53,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#74C1E6',
-  },
-  registerButton: {
-    backgroundColor: '#9CCC65',
-    paddingVertical: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 15,
-  },
-  registerButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  recoveryButton: {
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  recoveryButtonText: {
-    color: '#121212',
-    fontSize: 14,
-  },
   buttonDisabled: {
     opacity: 0.6,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-    marginHorizontal: 20,
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: 16,
-    marginBottom: 12,
-    textAlign: 'center',
-    color: '#121212',
-  },
-  modalMessage: {
-    fontSize: 14,
-    textAlign: 'center',
-    color: '#666',
-    marginBottom: 24,
-    lineHeight: 20,
-  },
-  modalButtons: {
+  biometricButton: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  modalButtonPrimary: {
-    backgroundColor: '#74C1E6',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
     borderRadius: 8,
+    marginTop: 12,
+    borderWidth: 2,
+    borderColor: '#74C1E6',
+    gap: 8,
+    backgroundColor: 'rgba(116, 193, 230, 0.05)',
   },
-  modalButtonPrimaryText: {
-    color: '#fff',
+  biometricButtonText: {
+    color: '#74C1E6',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  modalButtonSecondary: {
-    backgroundColor: '#e0e0e0',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+  registerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
   },
-  modalButtonSecondaryText: {
+  registerText: {
     color: '#666',
-    fontSize: 16,
+    fontSize: 14,
+  },
+  registerLink: {
+    color: '#74C1E6',
+    fontSize: 14,
     fontWeight: 'bold',
   },
-}); 
+});
