@@ -7,20 +7,36 @@ import {
   StyleSheet,
   StatusBar,
   TouchableOpacity,
-  
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import CarouselComponent from "../components/Carousel";
 import Dropdown from "../components/DropdownComponent";
 
 export default function HomeScreen() {
+
   const navigation = useNavigation();
   const url = process.env.EXPO_PUBLIC_API_URL;
 
   const [isLoading, setLoading] = useState(true);
   const [cursos, setCursos] = useState([]);
+  const [sedes, setSedes] = useState([]);
 
-  const getCursos = async () =>  {
+  const getSedes = async () => {
+    try {
+      const response = await fetch(url + "/headquarters/allHeadquarters", {
+        method: "GET",
+      });
+
+      const json = await response.json();
+      setSedes(json.data.map((sede) => ({ label: sede.name, value: sede.id })));
+    } catch (error) {
+      console.log("ERROR, ", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getCursos = async () => {
     try {
       const response = await fetch(url + "/shifts", {
         method: "GET",
@@ -37,9 +53,10 @@ export default function HomeScreen() {
 
   useEffect(() => {
     getCursos();
+    getSedes();
   }, []);
 
-  const Curso = ({ sede, nombreClase, horario, tipoDeporte,onPress }) => (
+  const Curso = ({ sede, nombreClase, horario, tipoDeporte, onPress }) => (
     <TouchableOpacity style={styles.item} onPress={onPress}>
       <Text style={styles.subtitle}>
         clase:<Text style={styles.title}> {nombreClase}</Text>
@@ -66,7 +83,7 @@ export default function HomeScreen() {
         <ActivityIndicator />
       ) : (
         <>
-          <Dropdown />
+          <Dropdown placeholder="Seleccionar sede" label="Sede" items={sedes} />
           <FlatList
             data={cursos}
             renderItem={({ item }) => (
