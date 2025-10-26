@@ -2,7 +2,7 @@ import { useState,} from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 
-function DropdownComponent({items,placeholder,label}) {
+function DropdownComponent({items,placeholder,label, onValueChange}) {
   const [value, setValue] = useState(null);
   const [isFocus, setIsFocus] = useState(false);  
 
@@ -36,6 +36,7 @@ function DropdownComponent({items,placeholder,label}) {
         onChange={(item) => {
           setValue(item.value);
           setIsFocus(false);
+          onValueChange(item.value);
         }}
       />
     </View>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -7,14 +7,13 @@ import {
   StyleSheet,
   StatusBar,
   TouchableOpacity,
-  ScrollView
+  ScrollView,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import CarouselComponent from "../components/Carousel";
 import Dropdown from "../components/DropdownComponent";
 
 export default function HomeScreen() {
-
   const navigation = useNavigation();
   const url = process.env.EXPO_PUBLIC_API_URL;
 
@@ -22,8 +21,8 @@ export default function HomeScreen() {
   const [cursos, setCursos] = useState([]);
   const [sedes, setSedes] = useState([]);
   const [disciplina, setDisciplina] = useState([]);
-
-
+  //estado para los filtros
+  const [sedeId, setSedeId] = useState(null);
 
   const getSedes = async () => {
     try {
@@ -39,25 +38,30 @@ export default function HomeScreen() {
       setLoading(false);
     }
   };
-   const getDisciplina = async () => {
+  const getDisciplina = async () => {
     try {
       const response = await fetch(url + "/sports/allSports", {
         method: "GET",
       });
 
       const json = await response.json();
-      setDisciplina(json.data.map((sport) => ({ label: sport.sportTypeName, value: sport.id })));
+      setDisciplina(
+        json.data.map((sport) => ({
+          label: sport.sportTypeName,
+          value: sport.id,
+        }))
+      );
     } catch (error) {
       console.log("ERROR, ", error);
     } finally {
       setLoading(false);
     }
   };
+  //3 filtros sede,tipoDeporte,inicio .En un solo state o en 3 distintos
 
-
-  const getCursos = async () => {
+  const getCursos = async (endpoint) => {
     try {
-      const response = await fetch(url + "/shifts", {
+      const response = await fetch(endpoint, {
         method: "GET",
       });
 
@@ -71,27 +75,44 @@ export default function HomeScreen() {
   };
 
   const horario = [
-    {label: "8:00", value: "8:00"},
-    {label: "9:00", value: "9:00"},
-    {label: "10:00", value: "10:00"},
-    {label: "11:00", value: "11:00"},
-    {label: "12:00", value: "12:00"},
-    {label: "13:00", value: "13:00"},
-    {label: "14:00", value: "14:00"},
-    {label: "15:00", value: "15:00"},
-    {label: "16:00", value: "16:00"},
-    {label: "17:00", value: "17:00"},
-    {label: "18:00", value: "18:00"},
-    {label: "19:00", value: "19:00"},
-    {label: "20:00", value: "20:00"}
+    { label: "8:00", value: "08:00" },
+    { label: "9:00", value: "09:00" },
+    { label: "10:00", value: "10:00" },
+    { label: "11:00", value: "11:00" },
+    { label: "12:00", value: "12:00" },
+    { label: "13:00", value: "13:00" },
+    { label: "14:00", value: "14:00" },
+    { label: "15:00", value: "15:00" },
+    { label: "16:00", value: "16:00" },
+    { label: "17:00", value: "17:00" },
+    { label: "18:00", value: "18:00" },
+    { label: "19:00", value: "19:00" },
+    { label: "20:00", value: "20:00" },
   ];
 
-
   useEffect(() => {
-    getCursos();
+    getCursos(url + "/shifts");
     getSedes();
     getDisciplina();
   }, []);
+
+
+  const cuandoSeSeleccionaSede = (sedeId) => {
+    console.log("Sede seleccionada:", sedeId);
+    setSedeId(sedeId);
+  };
+
+  useEffect(() => {
+    let queryParameters = new URLSearchParams
+    if (sedeId) {
+      console.log("Cargando cursos para la sede ID:", sedeId);
+      queryParameters.append("sede", sedeId);
+    }
+
+    if (queryParameters.toString() !== "") {
+      getCursos(url + "/shifts?" + queryParameters.toString());
+    }
+  }, [sedeId]);
 
   const Curso = ({ sede, nombreClase, horario, tipoDeporte, onPress }) => (
     <TouchableOpacity style={styles.item} onPress={onPress}>
@@ -110,9 +131,8 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
-
   return (
-     <ScrollView style={styles.scrollView}>
+    <ScrollView style={styles.scrollView}>
       <View>
         <CarouselComponent style={styles.carousel} />
       </View>
@@ -121,10 +141,10 @@ export default function HomeScreen() {
         <ActivityIndicator />
       ) : (
         <>
-        <View style={styles.posicionDropdown}>
-          <Dropdown placeholder="sede" label  ="Sede" items={sedes}  />
-          <Dropdown placeholder="sport" label="Sport" items={disciplina} />
-          <Dropdown placeholder="Hora" label="Hora" items={horario} />
+          <View style={styles.posicionDropdown}>
+            <Dropdown placeholder="sede" label="Sede" items={sedes} onValueChange={cuandoSeSeleccionaSede} />
+            <Dropdown placeholder="sport" label="Sport" items={disciplina} />
+            <Dropdown placeholder="Hora" label="Hora" items={horario} />
           </View>
           <FlatList
             data={cursos}
@@ -181,10 +201,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     color: "#3c7090ff",
   },
-  posicionDropdown:{
+  posicionDropdown: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-evenly",
-      marginVertical: 0,
-  }
+    marginVertical: 0,
+  },
 });

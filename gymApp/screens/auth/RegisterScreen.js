@@ -30,7 +30,7 @@ import {
 
 export default function RegisterScreen({ navigation, route }) {
   const dispatch = useDispatch();
-  const isLoading = useSelector(selectAuthLoading);
+  const isLoading = false
   const error = useSelector(selectAuthError);
 
   const [email, setEmail] = useState(route.params?.email || '');
