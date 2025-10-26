@@ -179,7 +179,7 @@ export default function HomeScreen() {
              onValueChange={cuandoSeSeleccionaHorario}
            />
           </View>
-          <FlatList
+          {cursos.length>0?(    <FlatList
             data={cursos}
             renderItem={({ item }) => (
               <Curso
@@ -196,7 +196,8 @@ export default function HomeScreen() {
               />
             )}
             keyExtractor={(item) => item.idClase}
-          />
+          />):<Text style={styles.title}>No hay cursos disponibles con esos filtros</Text>}
+      
         </>
       )}
     </ScrollView>
@@ -218,6 +219,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     borderRadius: 10,
+    marginTop: 40,
     justifyContent: "center",
     fontWeight: "bold",
     fontStyle: "italic",
