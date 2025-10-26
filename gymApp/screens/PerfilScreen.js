@@ -8,6 +8,7 @@ import {
   Image,
   Modal,
   TextInput,
+  ScrollView
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
@@ -276,7 +277,7 @@ const PerfilScreen = () => {
               autoCapitalize="none"
               editable={false}
             />
-             <Button mode="contained" onPress={putUsuario}>
+             <Button style={styles.btnGuardar} mode="contained" onPress={putUsuario}>
               Guardar cambios
             </Button>
           </View>
@@ -484,8 +485,8 @@ export default PerfilScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#b35cbdff",
-    padding: 20,
+    backgroundColor: "#b35cbdff"
+ 
   },
   title: {
     fontSize: 32,
@@ -532,9 +533,8 @@ const styles = StyleSheet.create({
   infoContainer: {
     backgroundColor: "rgba(255, 255, 255, 0.1)",
     borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-  },
+    padding: 20},
+
   biometricEnabledContainer: {
     marginBottom: 20,
   },
@@ -561,12 +561,18 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#fff",
   },
+  btnGuardar: {
+    padding:10,
+    marginBottom:10,
+    marginEnd:10,
+    backgroundColor:"#74C1E6",
+  },
   enableBiometricButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(116, 193, 230, 0.15)",
     paddingVertical: 18,
-    paddingHorizontal: 20,
+    paddingHorizontal: 20,  
     borderRadius: 12,
     marginBottom: 20,
     gap: 15,

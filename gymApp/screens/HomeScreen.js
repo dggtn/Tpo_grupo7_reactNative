@@ -7,6 +7,7 @@ import {
   StyleSheet,
   StatusBar,
   TouchableOpacity,
+  ScrollView
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import CarouselComponent from "../components/Carousel";
@@ -20,6 +21,7 @@ export default function HomeScreen() {
   const [isLoading, setLoading] = useState(true);
   const [cursos, setCursos] = useState([]);
   const [sedes, setSedes] = useState([]);
+  const [disciplina, setDisciplina] = useState([]);
 
   const getSedes = async () => {
     try {
@@ -35,6 +37,21 @@ export default function HomeScreen() {
       setLoading(false);
     }
   };
+   const getDisciplina = async () => {
+    try {
+      const response = await fetch(url + "/sports/allSports", {
+        method: "GET",
+      });
+
+      const json = await response.json();
+      setDisciplina(json.data.map((sport) => ({ label: sport.sportTypeName, value: sport.id })));
+    } catch (error) {
+      console.log("ERROR, ", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const getCursos = async () => {
     try {
@@ -51,9 +68,27 @@ export default function HomeScreen() {
     }
   };
 
+  const horario = [
+    {label: "8:00", value: "8:00"},
+    {label: "9:00", value: "9:00"},
+    {label: "10:00", value: "10:00"},
+    {label: "11:00", value: "11:00"},
+    {label: "12:00", value: "12:00"},
+    {label: "13:00", value: "13:00"},
+    {label: "14:00", value: "14:00"},
+    {label: "15:00", value: "15:00"},
+    {label: "16:00", value: "16:00"},
+    {label: "17:00", value: "17:00"},
+    {label: "18:00", value: "18:00"},
+    {label: "19:00", value: "19:00"},
+    {label: "20:00", value: "20:00"}
+  ];
+
+
   useEffect(() => {
     getCursos();
     getSedes();
+    getDisciplina();
   }, []);
 
   const Curso = ({ sede, nombreClase, horario, tipoDeporte, onPress }) => (
@@ -73,8 +108,9 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
+
   return (
-    <View>
+     <ScrollView style={styles.scrollView}>
       <View>
         <CarouselComponent style={styles.carousel} />
       </View>
@@ -84,6 +120,8 @@ export default function HomeScreen() {
       ) : (
         <>
           <Dropdown placeholder="Seleccionar sede" label="Sede" items={sedes} />
+          <Dropdown placeholder="Seleccionar disciplina" label=" Disciplina " items={disciplina} />
+          <Dropdown placeholder="Seleccionar horario" label="Horario" items={horario} />
           <FlatList
             data={cursos}
             renderItem={({ item }) => (
@@ -104,7 +142,7 @@ export default function HomeScreen() {
           />
         </>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
