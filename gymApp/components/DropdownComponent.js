@@ -27,7 +27,7 @@ function DropdownComponent({items,placeholder,label}) {
         data={items}
         search
         maxHeight={300}
-        labelField="label"
+        labelField="label" 
         valueField="value"
         placeholder={!isFocus ? placeholder : "..."}
         value={value}
@@ -68,13 +68,11 @@ const styles = StyleSheet.create({
     marginRight: 5,
   },
   label: {
-    position: "absolute",
-    backgroundColor: "white",
-    left: 22,
+    backgroundColor: "skyblue",
     top: 8,
     zIndex: 999,
-    paddingHorizontal: 8,
-    fontSize: 14,
+    fontSize: 10,
+    borderRadius: 3,
   },
   placeholderStyle: {
     fontSize: 16,

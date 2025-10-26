@@ -122,7 +122,7 @@ export default function HomeScreen() {
       ) : (
         <>
         <View style={styles.posicionDropdown}>
-          <Dropdown placeholder="sede" label="Sede" items={sedes}  />
+          <Dropdown placeholder="sede" label  ="Sede" items={sedes}  />
           <Dropdown placeholder="sport" label="Sport" items={disciplina} />
           <Dropdown placeholder="Hora" label="Hora" items={horario} />
           </View>
