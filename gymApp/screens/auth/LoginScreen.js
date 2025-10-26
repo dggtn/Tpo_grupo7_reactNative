@@ -31,7 +31,7 @@ export default function LoginScreen({ navigation }) {
   const [biometricTypeName, setBiometricTypeName] = useState('Huella Digital');
   
   const dispatch = useDispatch();
-  const isLoading = false
+  const isLoading = useSelector(selectAuthLoading);
   const biometricEnabled = useSelector(selectBiometricEnabled);
   const biometricUserEmail = useSelector(selectBiometricUserEmail);
   const biometricAvailable = useSelector(selectBiometricAvailable);
