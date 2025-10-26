@@ -697,5 +697,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 20,
     backgroundColor: "#f9f9f9",
+    
   },
 });

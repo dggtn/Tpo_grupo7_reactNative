@@ -46,10 +46,10 @@ export default DropdownComponent;
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    padding: 4,
   },
   dropdown: {
-    height: 50,
+    width: 110,
     borderColor: "gray",
     borderWidth: 0.5,
     borderRadius: 8,

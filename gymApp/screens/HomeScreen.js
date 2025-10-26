@@ -23,6 +23,8 @@ export default function HomeScreen() {
   const [sedes, setSedes] = useState([]);
   const [disciplina, setDisciplina] = useState([]);
 
+
+
   const getSedes = async () => {
     try {
       const response = await fetch(url + "/headquarters/allHeadquarters", {
@@ -119,9 +121,11 @@ export default function HomeScreen() {
         <ActivityIndicator />
       ) : (
         <>
-          <Dropdown placeholder="Seleccionar sede" label="Sede" items={sedes} />
-          <Dropdown placeholder="Seleccionar disciplina" label=" Disciplina " items={disciplina} />
-          <Dropdown placeholder="Seleccionar horario" label="Horario" items={horario} />
+        <View style={styles.posicionDropdown}>
+          <Dropdown placeholder="sede" label="Sede" items={sedes}  />
+          <Dropdown placeholder="sport" label="Sport" items={disciplina} />
+          <Dropdown placeholder="Hora" label="Hora" items={horario} />
+          </View>
           <FlatList
             data={cursos}
             renderItem={({ item }) => (
@@ -177,4 +181,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     color: "#3c7090ff",
   },
+  posicionDropdown:{
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-evenly",
+      marginVertical: 0,
+  }
 });
