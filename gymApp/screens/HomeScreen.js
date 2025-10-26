@@ -20,9 +20,12 @@ export default function HomeScreen() {
   const [isLoading, setLoading] = useState(true);
   const [cursos, setCursos] = useState([]);
   const [sedes, setSedes] = useState([]);
-  const [disciplina, setDisciplina] = useState([]);
+  const [disciplinas, setDisciplinas] = useState([]);
+  const [horario, setHorario] = useState([]);
+
   //estado para los filtros
   const [sedeId, setSedeId] = useState(null);
+  const [disciplina, setDisciplina] = useState(null);
 
   const getSedes = async () => {
     try {
@@ -45,7 +48,7 @@ export default function HomeScreen() {
       });
 
       const json = await response.json();
-      setDisciplina(
+      setDisciplinas(
         json.data.map((sport) => ({
           label: sport.sportTypeName,
           value: sport.id,
@@ -74,7 +77,7 @@ export default function HomeScreen() {
     }
   };
 
-  const horario = [
+  const horarios = [
     { label: "8:00", value: "08:00" },
     { label: "9:00", value: "09:00" },
     { label: "10:00", value: "10:00" },
@@ -96,23 +99,37 @@ export default function HomeScreen() {
     getDisciplina();
   }, []);
 
-
   const cuandoSeSeleccionaSede = (sedeId) => {
     console.log("Sede seleccionada:", sedeId);
     setSedeId(sedeId);
   };
+  const cuandoSeSeleccionaDisciplina = (disciplina) => {
+    console.log("Disciplina seleccionada:", disciplina);
+    setDisciplina(disciplina);
+  };
+  const cuandoSeSeleccionaHorario = (horario) => {
+    console.log("Horario seleccionado:", horario);
+    setHorario(horario);
+  };
 
   useEffect(() => {
-    let queryParameters = new URLSearchParams
+    let queryParameters = new URLSearchParams();
     if (sedeId) {
       console.log("Cargando cursos para la sede ID:", sedeId);
       queryParameters.append("sede", sedeId);
     }
-
+    if (disciplina) {
+      console.log("Cargando cursos para la disciplina ID:", disciplina);
+      queryParameters.append("tipoDeporte", disciplina);
+    }
+    if (horario) {
+      console.log("Cargando cursos para el horario:", horario);
+      queryParameters.append("inicio", horario);
+    }
     if (queryParameters.toString() !== "") {
       getCursos(url + "/shifts?" + queryParameters.toString());
     }
-  }, [sedeId]);
+  }, [sedeId, disciplina, horario]);
 
   const Curso = ({ sede, nombreClase, horario, tipoDeporte, onPress }) => (
     <TouchableOpacity style={styles.item} onPress={onPress}>
@@ -142,9 +159,25 @@ export default function HomeScreen() {
       ) : (
         <>
           <View style={styles.posicionDropdown}>
-            <Dropdown placeholder="sede" label="Sede" items={sedes} onValueChange={cuandoSeSeleccionaSede} />
-            <Dropdown placeholder="sport" label="Sport" items={disciplina} />
-            <Dropdown placeholder="Hora" label="Hora" items={horario} />
+            <Dropdown
+              placeholder="sede"
+              label="Sede"
+              items={sedes}
+              onValueChange={cuandoSeSeleccionaSede}
+            />
+            <Dropdown
+              placeholder="sport"
+              label="Sport"
+              items={disciplinas}
+              onValueChange={cuandoSeSeleccionaDisciplina}
+            />
+
+            <Dropdown 
+            placeholder="Hora"
+             label="Hora"
+             items={horarios}
+             onValueChange={cuandoSeSeleccionaHorario}
+           />
           </View>
           <FlatList
             data={cursos}
