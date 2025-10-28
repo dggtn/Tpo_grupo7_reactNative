@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import { 
   View, 
   Text, 
@@ -118,16 +119,24 @@ export default function LoginScreen({ navigation }) {
                                     biometricUserEmail;
 
   return (
+     <LinearGradient
+          colors={['#71c9efff', '#e99a84ff', '#f1dca0ff']} // Array of colors for the gradient
+          style={styles.container}
+          start={{ x: 0, y: 0 }} // Start point of the gradient (top-left)
+          end={{ x: 1, y: 1 }}   // End point of the gradient (bottom-right)
+      >
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+       
         <View style={styles.header}>
-          <Ionicons name="barbell" size={64} color="#3a8f98ff" />
+          <Ionicons name="barbell-sharp" size={64} color="#fcefd5de" />
           <Text style={styles.title}>RitmoFit</Text>
           <Text style={styles.subtitle}>Bienvenido de vuelta</Text>
         </View>
@@ -215,7 +224,7 @@ export default function LoginScreen({ navigation }) {
             ) : (
               <>
                 <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
-                <Ionicons name="arrow-forward" size={20} color="#fff" />
+                <Ionicons name="arrow-forward" size={20} color="#e3e3efff" />
               </>
             )}
           </TouchableOpacity>
@@ -229,15 +238,18 @@ export default function LoginScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
         </View>
+     
       </ScrollView>
+      
     </KeyboardAvoidingView>
+   </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#B1A1A1',
+   
   },
   scrollContent: {
     flexGrow: 1,
@@ -251,12 +263,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#74C1E6',
+    color: '#2c2d52ff',
     marginTop: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#ffffffe7',
     marginTop: 5,
   },
   biometricButton: {
@@ -325,7 +337,7 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     flexDirection: 'row',
-    backgroundColor: '#74C1E6',
+    backgroundColor: '#2c2d52ea',
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: 'center',
@@ -337,21 +349,23 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   loginButtonText: {
-    color: '#fff',
+    color: '#e3e3efff',
     fontSize: 16,
     fontWeight: 'bold',
   },
   linksContainer: {
     alignItems: 'center',
     marginTop: 20,
+  
   },
   linkText: {
     textAlign: 'center',
-    color: '#666',
+    color: '#ffffffe7',
     fontSize: 14,
   },
   linkBold: {
-    color: '#74C1E6',
+    color: '#2c2d52ff',
     fontWeight: 'bold',
+    fontSize: 17,
   },
 });

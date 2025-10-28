@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   View,
   Text,
@@ -122,16 +123,22 @@ export default function RegisterScreen({ navigation, route }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+       <LinearGradient
+              colors={['#71c9efff', '#e99a84ff', '#f1dca0ff']} // Array of colors for the gradient
+              style={styles.container}
+              start={{ x: 0, y: 0 }} // Start point of the gradient (top-left)
+              end={{ x: 1, y: 1 }}   // End point of the gradient (bottom-right)
+          >
+        <KeyboardAvoidingView 
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.logoContainer}>
-         <Ionicons name="barbell" size={64} color="#3a8f98ff" />
+         <Ionicons name="barbell-sharp" size={64} color="#fcefd5de" />
          <Text style={styles.title}>RitmoFit</Text>
          <Text style={styles.subtitle}>Registro de Usuario</Text>
         </View>
@@ -278,13 +285,14 @@ export default function RegisterScreen({ navigation, route }) {
         </View>
       </Modal>
     </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#B1A1A1',
+    
   },
   scrollContent: {
     flexGrow: 1,
@@ -304,7 +312,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginTop: 10,
-    color: '#9e4621ea',
+    color: '#2c2d52ff',
   },
    subtitle: {
     fontSize: 18,
@@ -341,19 +349,19 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   registerButton: {
-    backgroundColor: '#dbc668e0',
+    backgroundColor: '#e5d9c5e0',
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
   },
   registerButtonText: {
-    color: '#fff',
+    color: '#2c2d52ff',
     fontSize: 16,
     fontWeight: 'bold',
   },
   loginButton: {
-    backgroundColor: '#34998ad3',
+    backgroundColor: '#2c2d52ea',
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',

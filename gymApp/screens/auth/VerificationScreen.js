@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   View,
   Text,
@@ -94,12 +95,18 @@ export default function VerificationScreen({ navigation, route }) {
   };
 
   return (
+    <LinearGradient
+              colors={['#a9bfc8ff', '#ddcac5ff', '#c3c5a7ff']} // Array of colors for the gradient
+              style={styles.container}
+              start={{ x: 0, y: 0 }} // Start point of the gradient (top-left)
+              end={{ x: 1, y: 1 }}   // End point of the gradient (bottom-right)
+      >
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.content}>
-        <Ionicons name="mail-outline" size={80} color="#74C1E6" />
+        <Ionicons name="mail-outline" size={80} color="#c25a06be" />
 
         <Text style={styles.title}>Confirmar Email</Text>
 
@@ -188,13 +195,14 @@ export default function VerificationScreen({ navigation, route }) {
         </View>
       </Modal>
     </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#B1A1A1',
+   
   },
   content: {
     flex: 1,
@@ -208,25 +216,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     marginBottom: 20,
-    color: '#121212',
+    color: '#0b2b24ea',
   },
   emailText: {
     fontSize: 16,
     textAlign: 'center',
-    color: '#666',
+    color: '#0b2b24ea',
     marginBottom: 5,
   },
   email: {
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
-    color: '#121212',
+    color: '#0b2b24ea',
     marginBottom: 20,
   },
   instruction: {
     fontSize: 14,
     textAlign: 'center',
-    color: '#666',
+    color: '#434040ff',
     marginBottom: 30,
     paddingHorizontal: 20,
   },
@@ -241,7 +249,7 @@ const styles = StyleSheet.create({
   },
   verifyButton: {
     flexDirection: 'row',
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#40b88ac3',
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 8,
@@ -256,7 +264,7 @@ const styles = StyleSheet.create({
   },
   resendButton: {
     flexDirection: 'row',
-    backgroundColor: '#FF9800',
+    backgroundColor: '#e67e10ad',
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 8,
@@ -272,7 +280,7 @@ const styles = StyleSheet.create({
   note: {
     fontSize: 12,
     textAlign: 'center',
-    color: '#666',
+    color: '#434040ff',
     paddingHorizontal: 20,
   },
   buttonDisabled: {
