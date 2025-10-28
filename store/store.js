@@ -9,20 +9,34 @@ import userReducer from './slices/userSlice';
 import biometricReducer from './slices/biometricSlice';
 import errorReducer from './slices/errorSlice';
 
-// Configuración de persist
+// Configuración de persist para auth y user
+const authPersistConfig = {
+  key: 'auth',
+  storage: AsyncStorage,
+};
+
+const userPersistConfig = {
+  key: 'user',
+  storage: AsyncStorage,
+};
+
+// Biometric NO se persiste - solo vive en memoria (sesión actual)
+// Esto asegura que la biometría se desactive automáticamente al cerrar la app
+
+// Configuración de persist global
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['auth', 'user', 'biometric'], // Solo persistir estos reducers
-  blacklist: ['error'], // No persistir errores
+  whitelist: ['auth', 'user'], // Solo persistir auth y user
+  blacklist: ['error', 'biometric'], // NUNCA persistir biometric ni errores
 };
 
 // Combinar reducers
 const rootReducer = combineReducers({
-  auth: authReducer,
-  user: userReducer,
-  biometric: biometricReducer,
-  error: errorReducer,
+  auth: persistReducer(authPersistConfig, authReducer),
+  user: persistReducer(userPersistConfig, userReducer),
+  biometric: biometricReducer, // NO persistido - se resetea en cada inicio
+  error: errorReducer, // NO persistido
 });
 
 // Crear persisted reducer

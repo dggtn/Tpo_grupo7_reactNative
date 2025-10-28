@@ -16,6 +16,7 @@ import {
 import {
   loadBiometricConfig,
   checkBiometricAvailability,
+  resetBiometricOnLogout,
 } from '../store/slices/biometricSlice';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -36,16 +37,17 @@ export default function RootNavigator() {
     });
   }, [isAuthenticated, token, showErrorScreen]);
 
+  // Inicialización sin auto-habilitar biometría
   useEffect(() => {
     const initializeApp = async () => {
       try {
         console.log('[RootNavigator] 🚀 Inicializando aplicación...');
         
-        // ✅ SOLO cargar configuración guardada (NO habilitar automáticamente)
+        // Cargar configuración (pero no habilitar automáticamente)
         await dispatch(loadBiometricConfig()).unwrap();
-        console.log('[RootNavigator] ✅ Configuración biométrica cargada');
+        console.log('[RootNavigator] ✅ Configuración biométrica verificada');
         
-        // ✅ Verificar disponibilidad UNA SOLA VEZ (se cachea automáticamente)
+        // Verificar disponibilidad UNA SOLA VEZ
         await dispatch(checkBiometricAvailability(false)).unwrap();
         console.log('[RootNavigator] ✅ Disponibilidad biométrica verificada');
         
@@ -57,11 +59,24 @@ export default function RootNavigator() {
     };
 
     initializeApp();
-  }, []); // ✅ CRÍTICO: Array vacío = solo ejecuta una vez
+  }, []); //  Array vacío = solo ejecuta una vez
+
+  // Limpiar estado biométrico cuando se cierra sesión
+  useEffect(() => {
+    if (!isAuthenticated && !token) {
+      console.log('[RootNavigator] 🗑️ Sesión cerrada, limpiando biometría');
+      dispatch(resetBiometricOnLogout());
+    }
+  }, [isAuthenticated, token, dispatch]);
 
   if (!isReady) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B1A1A1' }}>
+      <View style={{ 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        backgroundColor: '#B1A1A1' 
+      }}>
         <ActivityIndicator size="large" color="#74C1E6" />
       </View>
     );

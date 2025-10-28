@@ -16,11 +16,12 @@ import { logout, selectToken } from "../../store/slices/authSlice";
 import { selectUserEmail } from "../../store/slices/userSlice";
 import {
   disableBiometric,
-  enableBiometric,
+  enableBiometricForSession,
   authenticateWithBiometric,
   selectBiometricEnabled,
   selectBiometricAvailable,
   checkBiometricAvailability,
+  resetBiometricOnLogout,
 } from "../../store/slices/biometricSlice";
 import { showSuccessToast, showErrorToast } from "../../utils/toastUtils";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
@@ -29,15 +30,11 @@ import {
   saveBiometricCredentials,
   deleteBiometricCredentials,
 } from "../../utils/biometricStorageUtils";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Button } from "react-native-paper";
-
-const BIOMETRIC_PROMPT_SHOWN_KEY = "biometric_prompt_shown";
 
 const PerfilScreen = () => {
   const dispatch = useDispatch();
   const token = useSelector(selectToken);
-  console.log("token", token);
   const userEmail = useSelector(selectUserEmail);
   const biometricEnabled = useSelector(selectBiometricEnabled);
   const biometricAvailable = useSelector(selectBiometricAvailable);
@@ -60,11 +57,9 @@ const PerfilScreen = () => {
   }, [token]);
 
   const initializeScreen = async () => {
-    console.log(token);
     if (token) {
       await getUsuario();
     }
-  
     await loadBiometricType();
   };
 
@@ -72,7 +67,6 @@ const PerfilScreen = () => {
     const typeName = await getBiometricTypeName();
     setBiometricTypeName(typeName);
   };
-
 
   const putUsuario = async () => {
     try {
@@ -88,7 +82,6 @@ const PerfilScreen = () => {
       });
 
       const json = await response.json();
-      console.log("usuario actualizado", json);
 
       if (json.ok) {
         setUsuario(json.data);
@@ -116,7 +109,6 @@ const PerfilScreen = () => {
       });
 
       const json = await response.json();
-      console.log("usuario", json);
 
       if (json.ok) {
         setUsuario(json.data);
@@ -141,14 +133,27 @@ const PerfilScreen = () => {
     setShowLogoutDialog(true);
   };
 
+  // Limpiar biometría al cerrar sesión
   const performLogout = async () => {
     setShowLogoutDialog(false);
     setIsLoggingOut(true);
     try {
+      console.log('[PerfilScreen] 🚪 Cerrando sesión...');
+      
+      // 1. Limpiar credenciales biométricas
+      await deleteBiometricCredentials();
+      console.log('[PerfilScreen] 🗑️ Credenciales biométricas eliminadas');
+      
+      // 2. Reset del estado biométrico
+      dispatch(resetBiometricOnLogout());
+      console.log('[PerfilScreen] 🔄 Estado biométrico reseteado');
+      
+      // 3. Logout normal
       await dispatch(logout()).unwrap();
+      
       showSuccessToast("Sesión Cerrada", "Has cerrado sesión correctamente");
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("[PerfilScreen] Logout error:", error);
     } finally {
       setIsLoggingOut(false);
     }
@@ -158,18 +163,19 @@ const PerfilScreen = () => {
     setShowBiometricDialog(true);
   };
 
+  // Deshabilitar biometría para esta sesión
   const performDisableBiometric = async () => {
     setShowBiometricDialog(false);
     try {
-
+      console.log('[PerfilScreen] 🗑️ Deshabilitando biometría para sesión actual');
+      
+      // Limpiar credenciales
       await deleteBiometricCredentials();
+      
+      // Deshabilitar en Redux (solo para esta sesión)
       await dispatch(disableBiometric()).unwrap();
 
-      if (userEmail) {
-        const shownKey = `${BIOMETRIC_PROMPT_SHOWN_KEY}_${userEmail}`;
-        await AsyncStorage.removeItem(shownKey);
-      }
-      showSuccessToast("Éxito", "Biometría desactivada correctamente");
+      showSuccessToast("Éxito", "Biometría desactivada para esta sesión");
       dispatch(checkBiometricAvailability(true));
     } catch (error) {
       showErrorToast("Error", "No se pudo desactivar la biometría");
@@ -180,6 +186,7 @@ const PerfilScreen = () => {
     setShowPasswordPrompt(true);
   };
 
+  // Habilitar biometría para esta sesión solamente
   const performEnableBiometric = async () => {
     if (!passwordForBiometric.trim()) {
       showErrorToast("Error", "Debes ingresar tu contraseña");
@@ -189,14 +196,14 @@ const PerfilScreen = () => {
     setShowPasswordPrompt(false);
 
     try {
-      console.log("[PerfilScreen] Habilitando biometría para:", userEmail);
+      console.log("[PerfilScreen] 🔐 Habilitando biometría para sesión actual:", userEmail);
 
-
+      // 1. Autenticar con biometría
       await dispatch(
         authenticateWithBiometric("Configurar " + biometricTypeName)
       ).unwrap();
 
-    
+      // 2. Guardar credenciales
       const saved = await saveBiometricCredentials(
         userEmail,
         passwordForBiometric
@@ -206,19 +213,16 @@ const PerfilScreen = () => {
         throw new Error("No se pudieron guardar las credenciales");
       }
 
-  
-      await dispatch(enableBiometric(userEmail)).unwrap();
+      // 3. Habilitar biometría SOLO para esta sesión (no persistente)
+      await dispatch(enableBiometricForSession(userEmail)).unwrap();
 
-      console.log("[PerfilScreen] Biometría configurada exitosamente");
-      showSuccessToast("¡Listo!", "Biometría activada correctamente");
+      console.log("[PerfilScreen] ✅ Biometría configurada para sesión actual");
+      showSuccessToast("¡Listo!", `${biometricTypeName} activada para esta sesión`);
 
- 
       setPasswordForBiometric("");
-
-  
       dispatch(checkBiometricAvailability(true));
     } catch (error) {
-      console.error("[PerfilScreen] Error habilitando biometría:", error);
+      console.error("[PerfilScreen] ❌ Error habilitando biometría:", error);
       if (
         error.toString().includes("cancelada") ||
         error.toString().includes("cancel")
@@ -282,6 +286,7 @@ const PerfilScreen = () => {
             </Button>
           </View>
 
+          {/* SECCIÓN DE BIOMETRÍA MEJORADA */}
           {biometricEnabled ? (
             <View style={styles.biometricEnabledContainer}>
               <View style={styles.infoRow}>
@@ -290,6 +295,9 @@ const PerfilScreen = () => {
                   <Text style={styles.infoLabel}>Autenticación Segura:</Text>
                   <Text style={[styles.infoValue, { color: "#4CAF50" }]}>
                     Activa ({biometricTypeName})
+                  </Text>
+                  <Text style={styles.sessionInfo}>
+                    Solo activa en esta sesión
                   </Text>
                 </View>
                 <TouchableOpacity onPress={handleDisableBiometric}>
@@ -323,6 +331,9 @@ const PerfilScreen = () => {
                   {biometricTypeName === "PIN del Dispositivo"
                     ? "Usa el PIN de tu dispositivo para iniciar sesión"
                     : "Inicia sesión más rápido y seguro"}
+                </Text>
+                <Text style={styles.sessionWarning}>
+                  ⚠️ Se desactivará al cerrar sesión
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={24} color="#74C1E6" />
@@ -368,6 +379,14 @@ const PerfilScreen = () => {
                 <Text style={styles.modalMessage}>
                   ¿Estás seguro que deseas cerrar sesión?
                 </Text>
+                {biometricEnabled && (
+                  <View style={styles.warningBox}>
+                    <Ionicons name="warning" size={20} color="#FF9800" />
+                    <Text style={styles.warningText}>
+                      La biometría se desactivará
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.modalButtons}>
                   <TouchableOpacity
                     style={styles.modalButtonSecondary}
@@ -388,7 +407,7 @@ const PerfilScreen = () => {
             </View>
           </Modal>
 
-        
+          {/* Biometric Disable Dialog */}
           <Modal
             visible={showBiometricDialog}
             transparent={true}
@@ -400,8 +419,8 @@ const PerfilScreen = () => {
                 <Ionicons name="finger-print" size={48} color="#FF9800" />
                 <Text style={styles.modalTitle}>Desactivar Biometría</Text>
                 <Text style={styles.modalMessage}>
-                  ¿Deseas desactivar la autenticación biométrica? Podrás volver
-                  a activarla en cualquier momento.
+                  ¿Deseas desactivar la autenticación biométrica para esta sesión?
+                  Podrás volver a activarla en cualquier momento.
                 </Text>
                 <View style={styles.modalButtons}>
                   <TouchableOpacity
@@ -425,7 +444,7 @@ const PerfilScreen = () => {
             </View>
           </Modal>
 
-    
+          {/* Password Prompt Dialog */}
           <Modal
             visible={showPasswordPrompt}
             transparent={true}
@@ -451,6 +470,13 @@ const PerfilScreen = () => {
                   secureTextEntry
                   autoCapitalize="none"
                 />
+
+                <View style={styles.infoBox}>
+                  <Ionicons name="information-circle" size={18} color="#FF9800" />
+                  <Text style={styles.infoBoxText}>
+                    La biometría se desactivará al cerrar sesión
+                  </Text>
+                </View>
 
                 <View style={styles.modalButtons}>
                   <TouchableOpacity
@@ -486,7 +512,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#b35cbdff"
- 
   },
   title: {
     fontSize: 32,
@@ -533,8 +558,8 @@ const styles = StyleSheet.create({
   infoContainer: {
     backgroundColor: "rgba(255, 255, 255, 0.1)",
     borderRadius: 12,
-    padding: 20},
-
+    padding: 20
+  },
   biometricEnabledContainer: {
     marginBottom: 20,
   },
@@ -561,18 +586,24 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#fff",
   },
+  sessionInfo: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.6)",
+    marginTop: 2,
+    fontStyle: "italic",
+  },
   btnGuardar: {
-    padding:10,
-    marginBottom:10,
-    marginEnd:10,
-    backgroundColor:"#74C1E6",
+    padding: 10,
+    marginBottom: 10,
+    marginEnd: 10,
+    backgroundColor: "#74C1E6",
   },
   enableBiometricButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(116, 193, 230, 0.15)",
     paddingVertical: 18,
-    paddingHorizontal: 20,  
+    paddingHorizontal: 20,
     borderRadius: 12,
     marginBottom: 20,
     gap: 15,
@@ -592,6 +623,13 @@ const styles = StyleSheet.create({
   enableBiometricSubtitle: {
     color: "rgba(255, 255, 255, 0.7)",
     fontSize: 13,
+    marginBottom: 4,
+  },
+  sessionWarning: {
+    color: "#FFB74D",
+    fontSize: 12,
+    fontStyle: "italic",
+    marginTop: 2,
   },
   biometricUnavailableContainer: {
     flexDirection: "row",
@@ -656,6 +694,20 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     lineHeight: 20,
   },
+  warningBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 152, 0, 0.1)",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  warningText: {
+    color: "#F57C00",
+    fontSize: 13,
+    fontWeight: "600",
+  },
   modalButtons: {
     flexDirection: "row",
     gap: 12,
@@ -695,8 +747,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 15,
     fontSize: 16,
-    marginBottom: 20,
+    marginBottom: 16,
     backgroundColor: "#f9f9f9",
-    
+  },
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 152, 0, 0.1)",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 20,
+    gap: 8,
+    width: "100%",
+  },
+  infoBoxText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#F57C00",
+    lineHeight: 16,
   },
 });

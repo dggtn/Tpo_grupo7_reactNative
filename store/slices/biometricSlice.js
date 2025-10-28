@@ -11,7 +11,6 @@ export const checkBiometricAvailability = createAsyncThunk(
   'biometric/checkAvailability',
   async (forceCheck = false, { rejectWithValue }) => {
     try {
-      // USAR CACHE si existe y no está expirado (a menos que se fuerce)
       const now = Date.now();
       if (!forceCheck && availabilityCache && (now - cacheTimestamp) < CACHE_DURATION) {
         console.log('[BiometricSlice] ✅ Usando resultado cacheado');
@@ -28,21 +27,18 @@ export const checkBiometricAvailability = createAsyncThunk(
         supportedTypes
       });
 
-      // ✅ Solo hacer prueba real si tiene hardware
       let reallyAvailable = false;
       
       if (hasHardware) {
         try {
           console.log('[BiometricSlice] 🧪 Haciendo prueba real única...');
           
-          // Intentar autenticar para verificar disponibilidad real
           const testResult = await LocalAuthentication.authenticateAsync({
             promptMessage: 'Verificando seguridad del dispositivo',
             cancelLabel: 'Cancelar',
             disableDeviceFallback: false,
           });
           
-          // Si el usuario pudo interactuar con el dialog, está disponible
           reallyAvailable = testResult.success || testResult.error === 'user_cancel';
           
           console.log('[BiometricSlice] ✅ Prueba real completada:', {
@@ -52,20 +48,17 @@ export const checkBiometricAvailability = createAsyncThunk(
           });
           
         } catch (testError) {
-          // Si falla con "not available", entonces NO está disponible
           if (testError.toString().includes('not available') || 
               testError.toString().includes('not enrolled')) {
             reallyAvailable = false;
             console.log('[BiometricSlice] ❌ No disponible por error:', testError.message);
           } else {
-            // Otros errores (como cancelación) = disponible
             reallyAvailable = true;
             console.log('[BiometricSlice] ✅ Disponible (error de cancelación)');
           }
         }
       }
       
-      // ✅ Usar resultado de prueba real en lugar de isEnrolled
       const isAvailable = hasHardware && reallyAvailable;
       
       const result = {
@@ -78,7 +71,6 @@ export const checkBiometricAvailability = createAsyncThunk(
       
       console.log('[BiometricSlice] Availability Check FINAL:', result);
       
-      // ✅ CACHEAR resultado
       availabilityCache = result;
       cacheTimestamp = now;
       
@@ -111,29 +103,39 @@ export const authenticateWithBiometric = createAsyncThunk(
   }
 );
 
-export const enableBiometric = createAsyncThunk(
-  'biometric/enable',
+// Habilitar biometría para la SESIÓN ACTUAL (no persistente entre logouts)
+export const enableBiometricForSession = createAsyncThunk(
+  'biometric/enableForSession',
   async (userEmail, { rejectWithValue }) => {
     try {
-      // Guardar email en SecureStore
-      await SecureStore.setItemAsync('biometric_user_email', userEmail);
-      await SecureStore.setItemAsync('biometric_enabled', 'true');
-      await SecureStore.setItemAsync('biometric_setup_time', Date.now().toString());
+      console.log('[BiometricSlice] ✅ Habilitando biometría para sesión actual:', userEmail);
       
-      return { enabled: true, userEmail };
+      //NO guardar en SecureStore, solo en memoria (Redux)
+      // Esto hace que la configuración se pierda al cerrar sesión
+      
+      return { 
+        enabled: true, 
+        userEmail,
+        sessionOnly: true // Flag para indicar que es solo para esta sesión
+      };
     } catch (error) {
       return rejectWithValue('Error habilitando biometría');
     }
   }
 );
 
+// Deshabilitar biometría (limpiar TODO)
 export const disableBiometric = createAsyncThunk(
   'biometric/disable',
   async (_, { rejectWithValue }) => {
     try {
+      console.log('[BiometricSlice] 🗑️ Deshabilitando biometría completamente');
+      
+      // Limpiar todo de SecureStore por seguridad
       await SecureStore.deleteItemAsync('biometric_user_email');
       await SecureStore.deleteItemAsync('biometric_enabled');
       await SecureStore.deleteItemAsync('biometric_last_used');
+      await SecureStore.deleteItemAsync('biometric_setup_time');
       
       return { enabled: false };
     } catch (error) {
@@ -142,20 +144,26 @@ export const disableBiometric = createAsyncThunk(
   }
 );
 
+// Cargar configuración (solo para verificar, NO habilitar automáticamente)
 export const loadBiometricConfig = createAsyncThunk(
   'biometric/loadConfig',
   async (_, { rejectWithValue }) => {
     try {
+      console.log('[BiometricSlice] 📂 Verificando configuración guardada...');
+      
+      // Solo verificar si hay algo guardado (no usarlo)
       const enabled = await SecureStore.getItemAsync('biometric_enabled');
       const userEmail = await SecureStore.getItemAsync('biometric_user_email');
-      const setupTime = await SecureStore.getItemAsync('biometric_setup_time');
-      const lastUsed = await SecureStore.getItemAsync('biometric_last_used');
       
+      console.log('[BiometricSlice] Configuración encontrada:', { enabled, userEmail });
+      
+      // Siempre devolver enabled=false al cargar
+      // La biometría solo se activa DESPUÉS de login si el usuario lo configura
       return {
-        enabled: enabled === 'true',
-        userEmail: userEmail || null,
-        setupTime: setupTime ? parseInt(setupTime) : null,
-        lastUsed: lastUsed ? parseInt(lastUsed) : null,
+        enabled: false, // NUNCA auto-habilitar
+        userEmail: null,
+        setupTime: null,
+        lastUsed: null,
       };
     } catch (error) {
       return rejectWithValue('Error cargando configuración');
@@ -168,10 +176,22 @@ export const updateLastUsed = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const timestamp = Date.now().toString();
-      await SecureStore.setItemAsync('biometric_last_used', timestamp);
+      // NO guardar en SecureStore, solo actualizar en memoria
       return { lastUsed: parseInt(timestamp) };
     } catch (error) {
       return rejectWithValue('Error actualizando último uso');
+    }
+  }
+);
+
+// Marcar que se mostró el prompt de configuración
+export const markSetupPromptShown = createAsyncThunk(
+  'biometric/markPromptShown',
+  async (_, { rejectWithValue }) => {
+    try {
+      return { setupPromptShown: true };
+    } catch (error) {
+      return rejectWithValue('Error marcando prompt');
     }
   }
 );
@@ -186,26 +206,32 @@ const biometricSlice = createSlice({
     hasHardware: false,
     isEnrolled: false,
     isAvailable: false,
-    reallyAvailable: false, // ✅ NUEVO: resultado de prueba real
+    reallyAvailable: false,
     supportedTypes: [],
     isLoading: false,
     error: null,
-    autoRequest: true,
+    sessionOnly: false, // Indica si la biometría es solo para esta sesión
+    setupPromptShown: false, // Indica si ya se mostró el prompt post-login
   },
   reducers: {
     clearBiometricError: (state) => {
       state.error = null;
     },
-    setAutoRequest: (state, action) => {
-      state.autoRequest = action.payload;
-    },
-    clearBiometricConfig: (state) => {
+    //Reset completo al hacer logout
+    resetBiometricOnLogout: (state) => {
+      console.log('[BiometricSlice] 🔄 Reset por logout');
       state.enabled = false;
       state.userEmail = null;
       state.setupTime = null;
       state.lastUsed = null;
+      state.sessionOnly = false;
+      state.setupPromptShown = false;
+      state.error = null;
     },
-    // ✅ NUEVO: Limpiar cache manualmente si es necesario
+    // Reset del flag de prompt mostrado
+    resetSetupPrompt: (state) => {
+      state.setupPromptShown = false;
+    },
     clearAvailabilityCache: (state) => {
       availabilityCache = null;
       cacheTimestamp = 0;
@@ -224,7 +250,7 @@ const biometricSlice = createSlice({
         state.hasHardware = action.payload.hasHardware;
         state.isEnrolled = action.payload.isEnrolled;
         state.isAvailable = action.payload.isAvailable;
-        state.reallyAvailable = action.payload.reallyAvailable; // ✅ NUEVO
+        state.reallyAvailable = action.payload.reallyAvailable;
         state.supportedTypes = action.payload.supportedTypes;
       })
       .addCase(checkBiometricAvailability.rejected, (state, action) => {
@@ -244,18 +270,19 @@ const biometricSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      // Enable
-      .addCase(enableBiometric.pending, (state) => {
+      // Enable For Session 
+      .addCase(enableBiometricForSession.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(enableBiometric.fulfilled, (state, action) => {
+      .addCase(enableBiometricForSession.fulfilled, (state, action) => {
         state.isLoading = false;
         state.enabled = true;
         state.userEmail = action.payload.userEmail;
         state.setupTime = Date.now();
+        state.sessionOnly = true;
       })
-      .addCase(enableBiometric.rejected, (state, action) => {
+      .addCase(enableBiometricForSession.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
@@ -269,51 +296,53 @@ const biometricSlice = createSlice({
         state.userEmail = null;
         state.setupTime = null;
         state.lastUsed = null;
+        state.sessionOnly = false;
       })
       .addCase(disableBiometric.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
       // Load Config
-      .addCase(loadBiometricConfig.pending, (state) => {
-        state.isLoading = true;
-      })
       .addCase(loadBiometricConfig.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.enabled = action.payload.enabled;
-        state.userEmail = action.payload.userEmail;
-        state.setupTime = action.payload.setupTime;
-        state.lastUsed = action.payload.lastUsed;
-      })
-      .addCase(loadBiometricConfig.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
+        // Siempre cargar como deshabilitado
+        state.enabled = false;
+        state.userEmail = null;
+        state.setupTime = null;
+        state.lastUsed = null;
+        state.sessionOnly = false;
+        state.setupPromptShown = false;
       })
       // Update Last Used
       .addCase(updateLastUsed.fulfilled, (state, action) => {
         state.lastUsed = action.payload.lastUsed;
+      })
+      // Mark Setup Prompt Shown
+      .addCase(markSetupPromptShown.fulfilled, (state) => {
+        state.setupPromptShown = true;
       });
   },
 });
 
 export const { 
   clearBiometricError, 
-  setAutoRequest, 
-  clearBiometricConfig,
-  clearAvailabilityCache, // ✅ NUEVO
+  resetBiometricOnLogout, 
+  resetSetupPrompt, 
+  clearAvailabilityCache,
 } = biometricSlice.actions;
 
 // Selectors
 export const selectBiometric = (state) => state.biometric;
 export const selectBiometricEnabled = (state) => state.biometric.enabled;
 export const selectBiometricAvailable = (state) => state.biometric.isAvailable;
-export const selectBiometricReallyAvailable = (state) => state.biometric.reallyAvailable; // ✅ NUEVO
+export const selectBiometricReallyAvailable = (state) => state.biometric.reallyAvailable;
 export const selectBiometricUserEmail = (state) => state.biometric.userEmail;
 export const selectBiometricLoading = (state) => state.biometric.isLoading;
+export const selectSetupPromptShown = (state) => state.biometric.setupPromptShown; // ✅ NUEVO
+
 export const selectShouldRequestBiometric = (state) => {
-  const { enabled, isAvailable, autoRequest, userEmail } = state.biometric;
-  const currentUserEmail = state.user.email;
-  return enabled && isAvailable && autoRequest && userEmail === currentUserEmail;
+  const { enabled, isAvailable } = state.biometric;
+  return enabled && isAvailable;
 };
 
 export default biometricSlice.reducer;
