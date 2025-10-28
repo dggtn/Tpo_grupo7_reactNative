@@ -110,6 +110,11 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
+  const handleForgotPassword = () => {
+    console.log('[LoginScreen] 🔑 Navegando a ForgotPassword');
+    navigation.navigate('ForgotPassword');
+  };
+
   const handleRecoverAccess = () => {
     console.log('[LoginScreen] 🔄 Navegando a Recovery');
     navigation.navigate('Recovery');
@@ -239,14 +244,24 @@ export default function LoginScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
-          {/* NUEVO: Botón de Recuperar Acceso */}
+          {/* Botón de Olvidé mi Contraseña */}
+          <TouchableOpacity 
+            onPress={handleForgotPassword}
+            style={styles.forgotPasswordButton}
+            disabled={isLoading}
+          >
+            <Ionicons name="key-outline" size={18} color="#2c2d52ff" />
+            <Text style={styles.forgotPasswordText}>Olvidé mi Contraseña</Text>
+          </TouchableOpacity>
+
+          {/* Botón de Recuperar Acceso */}
           <TouchableOpacity 
             onPress={handleRecoverAccess}
             style={styles.recoveryButton}
             disabled={isLoading}
           >
             <Ionicons name="help-circle-outline" size={18} color="#2c2d52ff" />
-            <Text style={styles.recoveryButtonText}>Recuperar Acceso</Text>
+            <Text style={styles.recoveryButtonText}>Recuperar Acceso (Registro Pendiente)</Text>
           </TouchableOpacity>
         </View>
      
@@ -391,4 +406,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
+  forgotPasswordButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(44, 45, 82, 0.1)',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  forgotPasswordText: {
+    color: '#2c2d52ff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
 });
