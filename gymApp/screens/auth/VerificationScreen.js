@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   View,
@@ -28,6 +28,9 @@ import {
   showInfoToast,
 } from '../../../utils/toastUtils';
 
+const RESEND_COOLDOWN = 120; // 2 minutos en segundos
+const CODE_EXPIRATION = 600; // 10 minutos en segundos
+
 export default function VerificationScreen({ navigation, route }) {
   const dispatch = useDispatch();
   const isLoading = useSelector(selectAuthLoading);
@@ -37,9 +40,28 @@ export default function VerificationScreen({ navigation, route }) {
   const [code, setCode] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [showExpiredDialog, setShowExpiredDialog] = useState(false);
+  
+  // Estados para el contador
+  const [resendCountdown, setResendCountdown] = useState(RESEND_COOLDOWN);
+  const [canResend, setCanResend] = useState(false);
+  const [codeExpiration, setCodeExpiration] = useState(CODE_EXPIRATION);
+  const [isCodeExpired, setIsCodeExpired] = useState(false);
+  
+  const resendTimerRef = useRef(null);
+  const expirationTimerRef = useRef(null);
 
   useEffect(() => {
     console.log('[VerificationScreen] 📧 Email para verificar:', email);
+    
+    // Iniciar contadores al montar
+    startResendTimer();
+    startExpirationTimer();
+    
+    // Cleanup al desmontar
+    return () => {
+      if (resendTimerRef.current) clearInterval(resendTimerRef.current);
+      if (expirationTimerRef.current) clearInterval(expirationTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -55,7 +77,62 @@ export default function VerificationScreen({ navigation, route }) {
     }
   }, [error]);
 
+  // Contador para reenvío (2 minutos)
+  const startResendTimer = () => {
+    setResendCountdown(RESEND_COOLDOWN);
+    setCanResend(false);
+    
+    if (resendTimerRef.current) {
+      clearInterval(resendTimerRef.current);
+    }
+    
+    resendTimerRef.current = setInterval(() => {
+      setResendCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(resendTimerRef.current);
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Contador para expiración del código (10 minutos)
+  const startExpirationTimer = () => {
+    setCodeExpiration(CODE_EXPIRATION);
+    setIsCodeExpired(false);
+    
+    if (expirationTimerRef.current) {
+      clearInterval(expirationTimerRef.current);
+    }
+    
+    expirationTimerRef.current = setInterval(() => {
+      setCodeExpiration((prev) => {
+        if (prev <= 1) {
+          clearInterval(expirationTimerRef.current);
+          setIsCodeExpired(true);
+          showWarningToast('Código Expirado', 'Debes solicitar un nuevo código');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Formatear tiempo en MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const handleVerify = async () => {
+    if (isCodeExpired) {
+      showErrorToast('Código Expirado', 'Debes solicitar un nuevo código');
+      return;
+    }
+
     if (!code.trim()) {
       showErrorToast('Error', 'Ingresa el código de verificación');
       return;
@@ -73,6 +150,10 @@ export default function VerificationScreen({ navigation, route }) {
       console.log('[VerificationScreen] ✅ Verificación exitosa');
       dispatch(clearPendingEmail());
       
+      // Limpiar timers
+      if (resendTimerRef.current) clearInterval(resendTimerRef.current);
+      if (expirationTimerRef.current) clearInterval(expirationTimerRef.current);
+      
       showSuccessToast('¡Registro Exitoso!', 'Tu cuenta ha sido verificada correctamente');
       
       setTimeout(() => {
@@ -80,11 +161,18 @@ export default function VerificationScreen({ navigation, route }) {
       }, 1500);
     } catch (err) {
       console.error('[VerificationScreen] ❌ Error en verificación:', err);
-      // El error ya se maneja en el useEffect
     }
   };
 
   const handleResendCode = async () => {
+    if (!canResend) {
+      showInfoToast(
+        'Espera un momento', 
+        `Podrás reenviar el código en ${formatTime(resendCountdown)}`
+      );
+      return;
+    }
+
     if (!email) {
       showErrorToast('Error', 'Email no disponible');
       return;
@@ -97,10 +185,14 @@ export default function VerificationScreen({ navigation, route }) {
       
       showSuccessToast('Código Reenviado', 'Se ha enviado un nuevo código a tu email');
       setCode('');
+      
+      // Reiniciar ambos contadores
+      startResendTimer();
+      startExpirationTimer();
+      
     } catch (err) {
       console.error('[VerificationScreen] ❌ Error reenviando código:', err);
       
-      // Si el registro expiró completamente
       if (err.includes('expirado completamente') || err.includes('iniciar el proceso')) {
         setShowExpiredDialog(true);
       }
@@ -113,6 +205,10 @@ export default function VerificationScreen({ navigation, route }) {
     setShowExpiredDialog(false);
     dispatch(clearPendingEmail());
     
+    // Limpiar timers
+    if (resendTimerRef.current) clearInterval(resendTimerRef.current);
+    if (expirationTimerRef.current) clearInterval(expirationTimerRef.current);
+    
     if (action === 'register') {
       console.log('[VerificationScreen] 🔄 Navegando a Register por expiración');
       navigation.navigate('Register', { email });
@@ -120,6 +216,10 @@ export default function VerificationScreen({ navigation, route }) {
       console.log('[VerificationScreen] 🔄 Navegando a Login');
       navigation.navigate('Login');
     }
+  };
+
+  const showWarningToast = (title, message) => {
+    showInfoToast(title, message);
   };
 
   return (
@@ -149,8 +249,32 @@ export default function VerificationScreen({ navigation, route }) {
             Ingresa el código de 4 dígitos que te enviamos por email
           </Text>
 
+          {/* Indicador de expiración del código */}
+          <View style={[
+            styles.timerContainer, 
+            isCodeExpired && styles.timerContainerExpired
+          ]}>
+            <Ionicons 
+              name={isCodeExpired ? "alert-circle" : "time-outline"} 
+              size={18} 
+              color={isCodeExpired ? "#f44336" : "#40b88a"} 
+            />
+            <Text style={[
+              styles.timerText,
+              isCodeExpired && styles.timerTextExpired
+            ]}>
+              {isCodeExpired 
+                ? 'Código expirado' 
+                : `Código válido por: ${formatTime(codeExpiration)}`
+              }
+            </Text>
+          </View>
+
           <TextInput
-            style={styles.codeInput}
+            style={[
+              styles.codeInput,
+              isCodeExpired && styles.codeInputDisabled
+            ]}
             value={code}
             onChangeText={setCode}
             keyboardType="number-pad"
@@ -158,14 +282,17 @@ export default function VerificationScreen({ navigation, route }) {
             placeholder="0000"
             placeholderTextColor="#999"
             textAlign="center"
-            editable={!isLoading}
+            editable={!isLoading && !isCodeExpired}
             autoFocus={true}
           />
 
           <TouchableOpacity
-            style={[styles.verifyButton, isLoading && styles.buttonDisabled]}
+            style={[
+              styles.verifyButton, 
+              (isLoading || isCodeExpired) && styles.buttonDisabled
+            ]}
             onPress={handleVerify}
-            disabled={isLoading}
+            disabled={isLoading || isCodeExpired}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
@@ -177,26 +304,49 @@ export default function VerificationScreen({ navigation, route }) {
             )}
           </TouchableOpacity>
 
+          {/* Botón de reenvío con contador */}
           <TouchableOpacity
-            style={[styles.resendButton, (isLoading || resendLoading) && styles.buttonDisabled]}
+            style={[
+              styles.resendButton, 
+              (!canResend || isLoading || resendLoading) && styles.resendButtonDisabled
+            ]}
             onPress={handleResendCode}
-            disabled={isLoading || resendLoading}
+            disabled={!canResend || isLoading || resendLoading}
           >
             {resendLoading ? (
               <ActivityIndicator color="#e67e10" />
             ) : (
               <>
-                <Ionicons name="refresh-outline" size={20} color="#fff" />
-                <Text style={styles.resendButtonText}>Reenviar Código</Text>
+                <Ionicons 
+                  name={canResend ? "refresh-outline" : "time-outline"} 
+                  size={20} 
+                  color={canResend ? "#fff" : "#999"} 
+                />
+                <Text style={[
+                  styles.resendButtonText,
+                  !canResend && styles.resendButtonTextDisabled
+                ]}>
+                  {canResend 
+                    ? 'Reenviar Código' 
+                    : `Reenviar en ${formatTime(resendCountdown)}`
+                  }
+                </Text>
               </>
             )}
           </TouchableOpacity>
 
+          {/* Información adicional */}
           <View style={styles.noteContainer}>
-            <Ionicons name="time-outline" size={18} color="#666" />
+            <Ionicons name="information-circle-outline" size={18} color="#666" />
             <Text style={styles.note}>
-              El código expira en 10 minutos. Si no lo recibes, 
-              verifica tu carpeta de spam.
+              El código expira en 10 minutos. Puedes solicitar uno nuevo después de 2 minutos.
+            </Text>
+          </View>
+
+          <View style={styles.noteContainer}>
+            <Ionicons name="mail-outline" size={18} color="#666" />
+            <Text style={styles.note}>
+              Si no recibes el código, verifica tu carpeta de spam.
             </Text>
           </View>
         </View>
@@ -265,7 +415,7 @@ const styles = StyleSheet.create({
   },
   emailContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   emailLabel: {
     fontSize: 15,
@@ -281,9 +431,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     color: '#434040ff',
-    marginBottom: 32,
+    marginBottom: 16,
     paddingHorizontal: 20,
     lineHeight: 20,
+  },
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(64, 184, 138, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#40b88a',
+    gap: 8,
+  },
+  timerContainerExpired: {
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    borderColor: '#f44336',
+  },
+  timerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#40b88a',
+  },
+  timerTextExpired: {
+    color: '#f44336',
   },
   codeInput: {
     backgroundColor: '#fff',
@@ -302,6 +476,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+  },
+  codeInputDisabled: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#ddd',
+    opacity: 0.6,
   },
   verifyButton: {
     flexDirection: 'row',
@@ -332,15 +511,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
     gap: 8,
-    minWidth: 200,
+    minWidth: 240,
     justifyContent: 'center',
+  },
+  resendButtonDisabled: {
+    backgroundColor: '#e0e0e0',
+    opacity: 0.7,
   },
   resendButtonText: {
     color: '#fff',
     fontSize: 15,
     fontWeight: 'bold',
+  },
+  resendButtonTextDisabled: {
+    color: '#999',
   },
   noteContainer: {
     flexDirection: 'row',
@@ -351,6 +537,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     maxWidth: 320,
     gap: 8,
+    marginBottom: 12,
   },
   note: {
     flex: 1,
