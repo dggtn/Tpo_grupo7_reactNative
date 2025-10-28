@@ -1,4 +1,3 @@
-// gymApp/components/BiometricSetupManager.js
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,11 +14,13 @@ import { getBiometricTypeName } from '../../utils/biometricUtils';
 import { saveBiometricCredentials } from '../../utils/biometricStorageUtils';
 import { showSuccessToast, showErrorToast } from '../../utils/toastUtils';
 
-const BIOMETRIC_PROMPT_SHOWN_KEY = 'biometric_prompt_shown';
+const BIOMETRIC_MODAL_SHOWN_THIS_LOGIN = 'biometric_modal_shown_this_login';
 
 /**
- * ✅ Componente que gestiona el modal de configuración biométrica
- * Se monta DESPUÉS de autenticación exitosa
+ * Componente que gestiona el modal de configuración biométrica
+ * - SIEMPRE se muestra después de cada login (configuración OPCIONAL)
+ * - Si el usuario acepta, el desbloqueo es OBLIGATORIO hasta que cierre sesión
+ * - Si el usuario cierra sesión, se desactiva y vuelve a preguntar en próximo login
  */
 export default function BiometricSetupManager() {
   const dispatch = useDispatch();
@@ -43,30 +44,29 @@ export default function BiometricSetupManager() {
       return;
     }
 
-    // ✅ USAR resultado de biometricSlice que ya hizo la prueba real
     if (!biometricAvailable) {
       console.log('[BiometricSetupManager] ⏭️ Biometría no disponible en dispositivo');
       return;
     }
 
-    // ✅ Verificar si ya se mostró el modal para este usuario
-    const shownKey = `${BIOMETRIC_PROMPT_SHOWN_KEY}_${currentUserEmail}`;
-    const alreadyShown = await AsyncStorage.getItem(shownKey);
+    // Verificar si ya se mostró el modal en ESTE login
+    const modalShownKey = `${BIOMETRIC_MODAL_SHOWN_THIS_LOGIN}_${currentUserEmail}`;
+    const alreadyShownThisLogin = await AsyncStorage.getItem(modalShownKey);
     
-    if (alreadyShown === 'declined') {
-      console.log('[BiometricSetupManager] ⏭️ Usuario rechazó anteriormente');
+    if (alreadyShownThisLogin === 'true') {
+      console.log('[BiometricSetupManager] ⏭️ Modal ya mostrado en este login');
       return;
     }
 
-    // ✅ Mostrar si NO está habilitada O si es otro usuario
-    const shouldShow = !biometricEnabled || 
-                      (biometricUserEmail && biometricUserEmail !== currentUserEmail.toLowerCase());
-    
-    if (shouldShow) {
-      console.log('[BiometricSetupManager] 🔔 Mostrando modal de configuración');
+    // LÓGICA PRINCIPAL: Mostrar solo si NO está habilitada actualmente
+    // (Si está habilitada, significa que ya la configuró en este login)
+    if (!biometricEnabled) {
+      console.log('[BiometricSetupManager] 🔔 Mostrando modal de configuración OPCIONAL');
       const typeName = await getBiometricTypeName();
       setBiometricTypeName(typeName);
       setShowModal(true);
+    } else {
+      console.log('[BiometricSetupManager] ✅ Biometría ya configurada en este login');
     }
   };
 
@@ -80,7 +80,7 @@ export default function BiometricSetupManager() {
       // 1. Probar autenticación biométrica
       await dispatch(authenticateWithBiometric(`Configurar ${biometricTypeName}`)).unwrap();
       
-      // 2. ⚠️ TEMPORAL: Guardar email (NO contraseña) hasta implementar refresh tokens
+      // 2. Guardar email (temporal hasta implementar refresh tokens)
       const saved = await saveBiometricCredentials(currentUserEmail, 'USE_REFRESH_TOKEN');
       
       if (!saved) {
@@ -90,11 +90,11 @@ export default function BiometricSetupManager() {
       // 3. Habilitar en el estado
       await dispatch(enableBiometric(currentUserEmail)).unwrap();
       
-      showSuccessToast('¡Listo!', 'Biometría activada correctamente');
+      showSuccessToast('¡Listo!', 'Biometría activada. Será requerida al reingresar.');
       
-      // Marcar como mostrado
-      const shownKey = `${BIOMETRIC_PROMPT_SHOWN_KEY}_${currentUserEmail}`;
-      await AsyncStorage.setItem(shownKey, 'accepted');
+      // ✅ Marcar que se mostró en esta sesión (para no volver a mostrar)
+      const shownKey = `${BIOMETRIC_SETUP_SHOWN_KEY}_${currentUserEmail}`;
+      await AsyncStorage.setItem(shownKey, 'true');
       
     } catch (error) {
       console.error('[BiometricSetupManager] ❌ Error:', error);
@@ -108,11 +108,16 @@ export default function BiometricSetupManager() {
 
   const handleDecline = async () => {
     setShowModal(false);
-    console.log('[BiometricSetupManager] ❌ Usuario rechazó biometría permanentemente');
+    console.log('[BiometricSetupManager] ❌ Usuario rechazó biometría');
     
-    // Guardar preferencia para no volver a preguntar
-    const shownKey = `${BIOMETRIC_PROMPT_SHOWN_KEY}_${currentUserEmail}`;
-    await AsyncStorage.setItem(shownKey, 'declined');
+    // ✅ CAMBIO: Solo marcar que se mostró en esta sesión (no permanentemente)
+    const shownKey = `${BIOMETRIC_SETUP_SHOWN_KEY}_${currentUserEmail}`;
+    await AsyncStorage.setItem(shownKey, 'true');
+    
+    showErrorToast(
+      'Biometría no activada',
+      'Podrás activarla después desde tu perfil'
+    );
   };
 
   const handleLater = () => {
