@@ -149,26 +149,26 @@ export const disableBiometric = createAsyncThunk(
   }
 );
 
-// ✅ Cargar configuración (solo para verificar, NO habilitar automáticamente)
+// ✅ Cargar configuración (ahora SÍ respeta el estado persistido)
 export const loadBiometricConfig = createAsyncThunk(
   'biometric/loadConfig',
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
     try {
-      console.log('[BiometricSlice] 📂 Verificando configuración guardada...');
+      console.log('[BiometricSlice] 📂 Cargando configuración biométrica...');
       
-      // Solo verificar si hay algo guardado (no usarlo)
-      const enabled = await SecureStore.getItemAsync('biometric_enabled');
-      const userEmail = await SecureStore.getItemAsync('biometric_user_email');
+      // ✅ Redux Persist ya cargó el estado, solo verificamos disponibilidad
+      const currentState = getState().biometric;
       
-      console.log('[BiometricSlice] Configuración encontrada:', { enabled, userEmail });
+      console.log('[BiometricSlice] Estado actual:', {
+        enabled: currentState.enabled,
+        userEmail: currentState.userEmail,
+        sessionOnly: currentState.sessionOnly
+      });
       
-      // ✅ SIEMPRE devolver enabled=false al cargar
-      // La biometría solo se activa DESPUÉS de login si el usuario lo configura
+      // Si estaba habilitado, mantenerlo (Redux Persist ya lo restauró)
+      // Solo reseteamos setupPromptShown para que NO vuelva a mostrar el modal
       return {
-        enabled: false, // NUNCA auto-habilitar
-        userEmail: null,
-        setupTime: null,
-        lastUsed: null,
+        keepCurrentState: true, // Señal para mantener el estado actual
       };
     } catch (error) {
       console.error('[BiometricSlice] ❌ Error cargando configuración:', error);

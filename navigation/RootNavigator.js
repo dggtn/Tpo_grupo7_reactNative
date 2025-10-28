@@ -14,7 +14,6 @@ import {
   selectShowErrorScreen 
 } from '../store/slices/errorSlice';
 import {
-  loadBiometricConfig,
   checkBiometricAvailability,
   resetBiometricOnLogout,
 } from '../store/slices/biometricSlice';
@@ -37,17 +36,13 @@ export default function RootNavigator() {
     });
   }, [isAuthenticated, token, showErrorScreen]);
 
-  // Inicialización sin auto-habilitar biometría
+  // ✅ Inicialización simplificada - Redux Persist ya cargó el estado
   useEffect(() => {
     const initializeApp = async () => {
       try {
         console.log('[RootNavigator] 🚀 Inicializando aplicación...');
         
-        // Cargar configuración (pero no habilitar automáticamente)
-        await dispatch(loadBiometricConfig()).unwrap();
-        console.log('[RootNavigator] ✅ Configuración biométrica verificada');
-        
-        // Verificar disponibilidad UNA SOLA VEZ
+        // ✅ SOLO verificar disponibilidad (no cargar config, ya lo hizo Redux Persist)
         await dispatch(checkBiometricAvailability(false)).unwrap();
         console.log('[RootNavigator] ✅ Disponibilidad biométrica verificada');
         
@@ -59,9 +54,9 @@ export default function RootNavigator() {
     };
 
     initializeApp();
-  }, []); //  Array vacío = solo ejecuta una vez
+  }, []); // ✅ Array vacío = solo ejecuta una vez
 
-  // Limpiar estado biométrico cuando se cierra sesión
+  // ✅ Limpiar estado biométrico cuando se cierra sesión
   useEffect(() => {
     if (!isAuthenticated && !token) {
       console.log('[RootNavigator] 🗑️ Sesión cerrada, limpiando biometría');
@@ -127,3 +122,4 @@ export default function RootNavigator() {
     </NavigationContainer>
   );
 }
+

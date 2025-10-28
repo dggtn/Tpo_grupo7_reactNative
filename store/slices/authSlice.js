@@ -64,7 +64,7 @@ export const checkPendingRegistration = createAsyncThunk(
 
 export const logout = createAsyncThunk(
   'auth/logout',
-  async (_, { rejectWithValue, getState }) => {
+  async (_, { rejectWithValue, getState, dispatch }) => {
     try {
       console.log('[authSlice.logout] 🚪 Iniciando logout...');
       
@@ -73,6 +73,14 @@ export const logout = createAsyncThunk(
       
       console.log('[authSlice.logout] 🔑 Token presente:', !!token);
       
+      // ✅ IMPORTANTE: Importar dinámicamente para evitar circular dependency
+      const { resetBiometricOnLogout } = require('./biometricSlice');
+      
+      // 1. Limpiar biometría ANTES de hacer logout en backend
+      console.log('[authSlice.logout] 🔒 Limpiando estado biométrico...');
+      dispatch(resetBiometricOnLogout());
+      
+      // 2. Llamar al backend si hay token
       if (token) {
         console.log('[authSlice.logout] 📡 Enviando request al backend...');
         await authAPI.logout(token);
@@ -89,6 +97,7 @@ export const logout = createAsyncThunk(
     }
   }
 );
+
 
 // Slice
 const authSlice = createSlice({
