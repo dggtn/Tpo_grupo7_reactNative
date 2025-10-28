@@ -1,49 +1,45 @@
-// utils/biometricUtils.js
-
 import * as LocalAuthentication from 'expo-local-authentication';
 
 /**
- * ✅ VERIFICACIÓN MEJORADA: Detecta si el dispositivo puede autenticar
+ * ✅ VERIFICACIÓN MEJORADA: Detecta biometría O PIN/Pattern
  */
 export const isBiometricAvailable = async () => {
   try {
     const hardware = await LocalAuthentication.hasHardwareAsync();
     const enrolled = await LocalAuthentication.isEnrolledAsync();
+    const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
     
     console.log('[BiometricUtils] 🔍 Verificación:');
     console.log('  - Hardware disponible:', hardware);
-    console.log('  - Seguridad configurada:', enrolled);
+    console.log('  - Biometría enrolled:', enrolled);
+    console.log('  - Tipos soportados:', types);
     
-    // ✅ Si tiene hardware Y seguridad configurada (PIN/biometría), está disponible
-    const available = hardware && enrolled;
+    // ✅ LÓGICA MEJORADA:
+    // 1. Si enrolled = true → Biometría real configurada
+    // 2. Si enrolled = false pero hardware = true y types > 0 → PIN/Pattern disponible
+    let available = false;
     
-    console.log('  - ✅ Biometría/PIN disponible:', available);
+    if (hardware) {
+      if (enrolled) {
+        console.log('  - ✅ Biometría real configurada');
+        available = true;
+      } else if (types.length > 0) {
+        console.log('  - ✅ PIN/Pattern disponible (sin biometría enrolled)');
+        available = true;
+      } else {
+        console.log('  - ❌ Sin autenticación configurada');
+        available = false;
+      }
+    } else {
+      console.log('  - ❌ Sin hardware de seguridad');
+      available = false;
+    }
+    
+    console.log('  - 🎯 Resultado final:', available);
     return available;
     
   } catch (error) {
     console.error('[BiometricUtils] ❌ Error verificando disponibilidad:', error);
-    return false;
-  }
-};
-
-/**
- * ✅ PRUEBA REAL: Intenta autenticar para verificar que funciona
- */
-export const testBiometricAuthentication = async () => {
-  try {
-    console.log('[BiometricUtils] 🧪 Probando autenticación...');
-    
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Verificar disponibilidad',
-      cancelLabel: 'Cancelar',
-      disableDeviceFallback: false, // ✅ Permitir PIN como fallback
-    });
-    
-    console.log('[BiometricUtils] Resultado de prueba:', result);
-    return result.success;
-    
-  } catch (error) {
-    console.error('[BiometricUtils] ❌ Error en prueba:', error);
     return false;
   }
 };
@@ -55,7 +51,7 @@ export const authenticate = async (promptMessage = 'Autenticación requerida') =
   try {
     console.log('[BiometricUtils] 🔐 Iniciando autenticación:', promptMessage);
     
-    // ✅ CONFIGURACIÓN CORRECTA PARA EMULADOR ANDROID
+    // ✅ CONFIGURACIÓN CORRECTA PARA ACEPTAR PIN/Pattern
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage,
       cancelLabel: 'Cancelar',
@@ -82,29 +78,37 @@ export const authenticate = async (promptMessage = 'Autenticación requerida') =
 };
 
 /**
- * Obtiene nombre del tipo de autenticación disponible
+ * ✅ MEJORADO: Obtiene nombre del tipo de autenticación con detección de PIN
  */
 export const getBiometricTypeName = async () => {
   try {
     const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+    const enrolled = await LocalAuthentication.isEnrolledAsync();
     
     console.log('[BiometricUtils] 📱 Tipos soportados:', types);
+    console.log('[BiometricUtils] 📱 Enrolled:', enrolled);
     
+    // Verificar tipos específicos de biometría
     if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
       return 'Face ID';
     }
     
     if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-      return 'Huella Digital';
+      if (enrolled) {
+        return 'Huella Digital';
+      } else {
+        // Tiene hardware de huella pero no está configurada → debe ser PIN/Pattern
+        return 'PIN del Dispositivo';
+      }
     }
     
     if (types.includes(LocalAuthentication.AuthenticationType.IRIS)) {
       return 'Reconocimiento de Iris';
     }
     
-    // ✅ Si no hay biometría real pero está enrolled, es PIN/Patrón
-    const enrolled = await LocalAuthentication.isEnrolledAsync();
-    if (enrolled) {
+    // Si tiene hardware pero no biometría enrolled → es PIN/Pattern
+    const hasHardware = await LocalAuthentication.hasHardwareAsync();
+    if (hasHardware && !enrolled && types.length > 0) {
       return 'PIN del Dispositivo';
     }
     
@@ -117,18 +121,23 @@ export const getBiometricTypeName = async () => {
 };
 
 /**
- * ✅ NUEVA: Obtiene información completa para debugging
+ * ✅ MEJORADO: Obtiene información completa con detección de PIN
  */
 export const getBiometricInfo = async () => {
   try {
     const hardware = await LocalAuthentication.hasHardwareAsync();
     const enrolled = await LocalAuthentication.isEnrolledAsync();
     const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
-    const available = hardware && enrolled;
     const typeName = await getBiometricTypeName();
     
-    const hasBiometricData = types.length > 0;
-    const hasOnlyPIN = enrolled && !hasBiometricData;
+    // Determinar disponibilidad real
+    let available = false;
+    if (hardware) {
+      available = enrolled || types.length > 0;
+    }
+    
+    const hasBiometricData = enrolled; // Solo true si hay biometría real
+    const hasOnlyPIN = !enrolled && types.length > 0; // PIN sin biometría
     
     const info = {
       hardware,
@@ -158,15 +167,42 @@ export const getBiometricInfo = async () => {
 };
 
 /**
- * ✅ NUEVA: Verifica si el dispositivo tiene seguridad configurada
+ * ✅ MEJORADO: Verifica si el dispositivo tiene seguridad configurada (biometría O PIN)
  */
 export const hasDeviceSecurity = async () => {
   try {
+    const hardware = await LocalAuthentication.hasHardwareAsync();
     const enrolled = await LocalAuthentication.isEnrolledAsync();
-    console.log('[BiometricUtils] 🔒 Seguridad del dispositivo:', enrolled);
-    return enrolled;
+    const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+    
+    // Tiene seguridad si:
+    // 1. Está enrolled (biometría real), O
+    // 2. Tiene hardware y tipos soportados (PIN/Pattern)
+    const hasSecurity = enrolled || (hardware && types.length > 0);
+    
+    console.log('[BiometricUtils] 🔒 Seguridad del dispositivo:', hasSecurity);
+    return hasSecurity;
   } catch (error) {
     console.error('[BiometricUtils] ❌ Error verificando seguridad:', error);
+    return false;
+  }
+};
+
+/**
+ * ✅ NUEVO: Prueba si la autenticación realmente funciona (versión ligera)
+ */
+export const canAuthenticate = async () => {
+  try {
+    const hardware = await LocalAuthentication.hasHardwareAsync();
+    if (!hardware) return false;
+    
+    const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+    if (types.length === 0) return false;
+    
+    // Si llegó aquí, hay hardware y tipos → puede autenticar
+    return true;
+  } catch (error) {
+    console.error('[BiometricUtils] ❌ Error verificando capacidad:', error);
     return false;
   }
 };

@@ -9,34 +9,56 @@ import userReducer from './slices/userSlice';
 import biometricReducer from './slices/biometricSlice';
 import errorReducer from './slices/errorSlice';
 
-// Configuración de persist para auth y user
+// Configuración de persist para auth
 const authPersistConfig = {
   key: 'auth',
   storage: AsyncStorage,
 };
 
+// Configuración de persist para user
 const userPersistConfig = {
   key: 'user',
   storage: AsyncStorage,
 };
 
-// Biometric NO se persiste - solo vive en memoria (sesión actual)
-// Esto asegura que la biometría se desactive automáticamente al cerrar la app
+// Persistir biometric PERO solo ciertos campos
+const biometricPersistConfig = {
+  key: 'biometric',
+  storage: AsyncStorage,
+  whitelist: [
+    'enabled',        // ✅ Guardar si está habilitado
+    'userEmail',      // ✅ Guardar email asociado
+    'setupTime',      // ✅ Guardar cuándo se configuró
+    'sessionOnly',    // ✅ Guardar que es solo para sesión
+  ],
+  // NO persistir: setupPromptShown (siempre debe resetearse)
+  blacklist: [
+    'setupPromptShown', 
+    'lastUsed',         
+    'isLoading',        
+    'error',             
+    'hasHardware',       
+    'isEnrolled',        
+    'isAvailable',       
+    'reallyAvailable',   
+    'supportedTypes',   
+  ],
+};
 
 // Configuración de persist global
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['auth', 'user'], // Solo persistir auth y user
-  blacklist: ['error', 'biometric'], // NUNCA persistir biometric ni errores
+  whitelist: ['auth', 'user', 'biometric'], // incluimos biometric
+  blacklist: ['error'], // Solo errores no se persisten
 };
 
 // Combinar reducers
 const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, authReducer),
   user: persistReducer(userPersistConfig, userReducer),
-  biometric: biometricReducer, // NO persistido - se resetea en cada inicio
-  error: errorReducer, // NO persistido
+  biometric: persistReducer(biometricPersistConfig, biometricReducer), // ✅ CON persist
+  error: errorReducer, // Sin persist
 });
 
 // Crear persisted reducer
