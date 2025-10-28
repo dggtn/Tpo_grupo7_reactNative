@@ -1,27 +1,29 @@
 import React, { useState, useEffect } from "react";
 import {
- View,
- Text,
- StyleSheet,
- TouchableOpacity,
- ActivityIndicator,
- Image,
- Modal,
- TextInput,
- ScrollView
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    Image,
+    Modal,
+    TextInput,
+    ScrollView
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
 import { logout, selectToken } from "../../store/slices/authSlice";
 import { selectUserEmail } from "../../store/slices/userSlice";
 import {
- disableBiometric,
- enableBiometricForSession,
- authenticateWithBiometric,
- selectBiometricEnabled,
- selectBiometricAvailable,
- checkBiometricAvailability,
- resetBiometricOnLogout,
+    disableBiometric,
+    enableBiometricForSession,
+    authenticateWithBiometric,
+    selectBiometricEnabled,
+    selectBiometricAvailable,
+    checkBiometricAvailability,
+    resetBiometricOnLogout,
 } from "../../store/slices/biometricSlice";
 import { showSuccessToast, showErrorToast } from "../../utils/toastUtils";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
@@ -279,9 +281,15 @@ const PerfilScreen = () => {
 
 
  return (
-   <View style={styles.container}>
-     <SafeAreaProvider>
-       <SafeAreaView>
+   <KeyboardAvoidingView 
+         style={styles.container}
+         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+       >
+         
+         <ScrollView 
+           contentContainerStyle={styles.scrollContent}
+           keyboardShouldPersistTaps="handled"
+         >
          <Text style={styles.title}>MI PERFIL</Text>
 
 
@@ -538,9 +546,8 @@ const PerfilScreen = () => {
              </View>
            </View>
          </Modal>
-       </SafeAreaView>
-     </SafeAreaProvider>
-   </View>
+        </ScrollView>   
+    </KeyboardAvoidingView>
  );
 };
 
@@ -553,6 +560,11 @@ const styles = StyleSheet.create({
    flex: 1,
    backgroundColor: "#b35cbdff"
  },
+ scrollContent: {
+    flexGrow: 1,
+    padding: 20,
+    justifyContent: 'center',
+  },
  title: {
    fontSize: 32,
    fontWeight: "bold",
