@@ -73,7 +73,7 @@ export const logout = createAsyncThunk(
       
       console.log('[authSlice.logout] 🔑 Token presente:', !!token);
       
-      // ✅ IMPORTANTE: Importar dinámicamente para evitar circular dependency
+      // Importar dinámicamente para evitar circular dependency
       const { resetBiometricOnLogout } = require('./biometricSlice');
       
       // 1. Limpiar biometría ANTES de hacer logout en backend
@@ -110,7 +110,7 @@ const authSlice = createSlice({
     loginTime: null,
     pendingEmail: null,
     registrationInProgress: false,
-    justLoggedIn: false, // ✅ NUEVO: Flag para saber si acaba de loguearse
+    justLoggedIn: false, // Flag para saber si acaba de loguearse
   },
   reducers: {
     clearError: (state) => {
@@ -121,7 +121,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.loginTime = null;
       state.error = null;
-      state.justLoggedIn = false; // ✅ NUEVO
+      state.justLoggedIn = false; 
     },
     setPendingEmail: (state, action) => {
       state.pendingEmail = action.payload;
@@ -132,7 +132,7 @@ const authSlice = createSlice({
     setRegistrationInProgress: (state, action) => {
       state.registrationInProgress = action.payload;
     },
-    // ✅ NUEVO: Marcar que ya se procesó el login
+    // Marcar que ya se procesó el login
     clearJustLoggedIn: (state) => {
       state.justLoggedIn = false;
     },
@@ -150,7 +150,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.loginTime = Date.now();
         state.error = null;
-        state.justLoggedIn = true; // ✅ NUEVO: Marcar que acaba de loguearse
+        state.justLoggedIn = true; //  Marcar que acaba de loguearse
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
@@ -227,7 +227,7 @@ const authSlice = createSlice({
         state.loginTime = null;
         state.pendingEmail = null;
         state.registrationInProgress = false;
-        state.justLoggedIn = false; // ✅ NUEVO
+        state.justLoggedIn = false; 
       })
       .addCase(logout.rejected, (state) => {
         state.token = null;
@@ -236,7 +236,7 @@ const authSlice = createSlice({
         state.loginTime = null;
         state.pendingEmail = null;
         state.registrationInProgress = false;
-        state.justLoggedIn = false; // ✅ NUEVO
+        state.justLoggedIn = false; 
       });
   },
 });
@@ -247,7 +247,7 @@ export const {
   setPendingEmail, 
   clearPendingEmail,
   setRegistrationInProgress,
-  clearJustLoggedIn, // ✅ NUEVO
+  clearJustLoggedIn, 
 } = authSlice.actions;
 
 // Selectors
@@ -259,6 +259,6 @@ export const selectAuthError = (state) => state.auth.error;
 export const selectLoginTime = (state) => state.auth.loginTime;
 export const selectPendingEmail = (state) => state.auth.pendingEmail;
 export const selectRegistrationInProgress = (state) => state.auth.registrationInProgress;
-export const selectJustLoggedIn = (state) => state.auth.justLoggedIn; // ✅ NUEVO
+export const selectJustLoggedIn = (state) => state.auth.justLoggedIn; 
 
 export default authSlice.reducer;

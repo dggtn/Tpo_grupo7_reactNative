@@ -10,6 +10,7 @@ import {
   selectBiometricEnabled,
   authenticateWithBiometric,
   updateLastUsed,
+  selectBiometricAvailable,
 } from '../store/slices/biometricSlice';
 import { selectJustLoggedIn } from '../store/slices/authSlice';
 import { logout } from '../store/slices/authSlice';
@@ -21,6 +22,7 @@ const Tab = createBottomTabNavigator();
 export default function AppStack() {
   const dispatch = useDispatch();
   const biometricEnabled = useSelector(selectBiometricEnabled);
+  const biometricAvailable = useSelector(selectBiometricAvailable);
   const justLoggedIn = useSelector(selectJustLoggedIn);
   
   // Estados para el bloqueo biométrico integrado
@@ -28,7 +30,23 @@ export default function AppStack() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [biometricTypeName, setBiometricTypeName] = useState('Huella Digital');
   const [authAttempted, setAuthAttempted] = useState(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
   const appState = useRef(AppState.currentState);
+
+  // LOGS DETALLADOS en mount
+  useEffect(() => {
+    console.log('[AppStack] 🚀 MONTADO - Estado inicial:', {
+      biometricEnabled,
+      biometricAvailable,
+      justLoggedIn,
+      appStateValue: appState.current
+    });
+  }, []);
+
+  // LOGS cuando cambia biometricEnabled
+  useEffect(() => {
+    console.log('[AppStack] 🔄 biometricEnabled cambió a:', biometricEnabled);
+  }, [biometricEnabled]);
 
   // Cargar tipo de biometría
   useEffect(() => {
@@ -38,16 +56,56 @@ export default function AppStack() {
   const loadBiometricType = async () => {
     const typeName = await getBiometricTypeName();
     setBiometricTypeName(typeName);
+    console.log('[AppStack] 📱 Tipo biométrico:', typeName);
   };
+
+  // Check inicial al montar si debe bloquear
+  useEffect(() => {
+    const performInitialCheck = async () => {
+      console.log('[AppStack] 🔍 Check inicial de bloqueo...');
+      console.log('[AppStack] Estado para check:', {
+        biometricEnabled,
+        biometricAvailable,
+        justLoggedIn,
+        initialCheckDone
+      });
+
+      // Si biometría está habilitada Y no acaba de loguearse
+      // Y no se ha hecho el check inicial → BLOQUEAR
+      if (biometricEnabled && biometricAvailable && !justLoggedIn && !initialCheckDone) {
+        console.log('[AppStack] 🔒 BLOQUEANDO por check inicial');
+        setIsLocked(true);
+        setInitialCheckDone(true);
+      } else {
+        console.log('[AppStack] ℹ️ No se bloquea:', {
+          enabled: biometricEnabled,
+          available: biometricAvailable,
+          justLogged: justLoggedIn,
+          checkDone: initialCheckDone
+        });
+        setInitialCheckDone(true);
+      }
+    };
+
+    // Solo ejecutar el check una vez que tengamos los valores del estado
+    if (biometricAvailable !== undefined && !initialCheckDone) {
+      performInitialCheck();
+    }
+  }, [biometricEnabled, biometricAvailable, justLoggedIn, initialCheckDone]);
 
   // Detectar cuando la app vuelve de background
   useEffect(() => {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
-  }, [biometricEnabled, justLoggedIn]);
+  }, [biometricEnabled, justLoggedIn, biometricAvailable]);
 
   const handleAppStateChange = (nextAppState) => {
     console.log('[AppStack] 🔄 AppState:', appState.current, '->', nextAppState);
+    console.log('[AppStack] Estado biométrico:', {
+      enabled: biometricEnabled,
+      available: biometricAvailable,
+      justLoggedIn
+    });
 
     // Si la app vuelve a foreground (activa)
     if (
@@ -58,11 +116,18 @@ export default function AppStack() {
 
       // Mostrar bloqueo SOLO si:
       // 1. Biometría está habilitada
-      // 2. NO acaba de loguearse (para no interferir con el setup modal)
-      if (biometricEnabled && !justLoggedIn) {
-        console.log('[AppStack] 🔒 Bloqueando pantalla');
+      // 2. Biometría está disponible
+      // 3. NO acaba de loguearse (para no interferir con el setup modal)
+      if (biometricEnabled && biometricAvailable && !justLoggedIn) {
+        console.log('[AppStack] 🔒 Bloqueando pantalla por reactivación');
         setIsLocked(true);
         setAuthAttempted(false);
+      } else {
+        console.log('[AppStack] ℹ️ No se bloquea por reactivación:', {
+          enabled: biometricEnabled,
+          available: biometricAvailable,
+          justLogged: justLoggedIn
+        });
       }
     }
 
@@ -72,6 +137,7 @@ export default function AppStack() {
   // Auto-autenticar cuando se bloquea
   useEffect(() => {
     if (isLocked && !authAttempted) {
+      console.log('[AppStack] 🔐 Auto-iniciando autenticación...');
       handleAuthenticate();
     }
   }, [isLocked, authAttempted]);
@@ -81,7 +147,7 @@ export default function AppStack() {
     setAuthAttempted(true);
 
     try {
-      console.log('[AppStack] 🔐 Solicitando autenticación...');
+      console.log('[AppStack] 🔐 Solicitando autenticación biométrica...');
 
       await dispatch(
         authenticateWithBiometric('Verificar identidad')
@@ -119,8 +185,14 @@ export default function AppStack() {
     }
   };
 
+  // LOGS cuando cambia isLocked
+  useEffect(() => {
+    console.log('[AppStack] 🔒 Estado de bloqueo cambió a:', isLocked);
+  }, [isLocked]);
+
   // Renderizar pantalla de bloqueo si está bloqueado
   if (isLocked) {
+    console.log('[AppStack] 🔒 RENDERIZANDO PANTALLA DE BLOQUEO');
     return (
       <View style={styles.lockContainer}>
         <View style={styles.lockContent}>
@@ -177,6 +249,7 @@ export default function AppStack() {
   }
 
   // Renderizar tabs normalmente
+  console.log('[AppStack] 📱 RENDERIZANDO TABS NORMALMENTE');
   return (
     <>
       <Tab.Navigator

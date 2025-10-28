@@ -42,7 +42,7 @@ export default function LoginScreen({ navigation }) {
 
   const initializeScreen = async () => {
     try {
-      // ✅ YA NO llamar checkBiometricAvailability (RootNavigator ya lo hizo)
+      // NO llamar checkBiometricAvailability (RootNavigator ya lo hizo)
       // Solo cargar el tipo de biometría
       const typeName = await getBiometricTypeName();
       setBiometricTypeName(typeName);
@@ -105,7 +105,7 @@ export default function LoginScreen({ navigation }) {
       
       showSuccessToast('¡Bienvenido!', 'Has iniciado sesión correctamente');
       
-      // ✅ El modal se mostrará automáticamente en AppStack
+      // El modal se mostrará automáticamente en AppStack
       
     } catch (error) {
       console.error('[LoginScreen] ❌ Error en login:', error);

@@ -6,7 +6,7 @@ let availabilityCache = null;
 let cacheTimestamp = 0;
 const CACHE_DURATION = 60000; // 1 minuto
 
-// ✅ VERSIÓN MEJORADA - Detecta PIN/Pattern/Biometría
+// Detecta PIN/Pattern/Biometría
 export const checkBiometricAvailability = createAsyncThunk(
   'biometric/checkAvailability',
   async (forceCheck = false, { rejectWithValue }) => {
@@ -29,25 +29,15 @@ export const checkBiometricAvailability = createAsyncThunk(
         supportedTypes
       });
 
-      // ✅ LÓGICA MEJORADA:
-      // - Si isEnrolled = true → Hay biometría real configurada
-      // - Si isEnrolled = false PERO supportedTypes.length > 0 → Puede haber PIN/Pattern
-      // - Si hasHardware = true → El dispositivo soporta autenticación
-      
       let isAvailable = false;
       
       if (hasHardware) {
         if (isEnrolled) {
-          // Caso 1: Biometría real configurada (huella, face, iris)
           console.log('[BiometricSlice] ✅ Biometría real detectada');
           isAvailable = true;
         } else if (supportedTypes.length > 0) {
-          // Caso 2: Sin biometría pero con hardware → puede ser PIN/Pattern
           console.log('[BiometricSlice] ⚠️ Sin biometría, verificando PIN/Pattern...');
-          
-          // El tipo 1 es FINGERPRINT, pero puede estar disponible aunque no enrolled
-          // En Android, si hay hardware pero no enrollment, aún puede usar PIN
-          isAvailable = true; // Asumir disponible si hay hardware
+          isAvailable = true;
           console.log('[BiometricSlice] ✅ PIN/Pattern disponible');
         } else {
           console.log('[BiometricSlice] ❌ Sin autenticación configurada');
@@ -68,7 +58,6 @@ export const checkBiometricAvailability = createAsyncThunk(
       
       console.log('[BiometricSlice] ✅ Resultado final:', result);
       
-      // Cachear resultado
       availabilityCache = result;
       cacheTimestamp = now;
       
@@ -106,20 +95,18 @@ export const authenticateWithBiometric = createAsyncThunk(
   }
 );
 
-// ✅ Habilitar biometría SOLO para la sesión actual (NO persistente)
+// Habilitar biometría SOLO para la sesión actual (NO persistente)
 export const enableBiometricForSession = createAsyncThunk(
   'biometric/enableForSession',
   async (userEmail, { rejectWithValue }) => {
     try {
       console.log('[BiometricSlice] ✅ Habilitando biometría para sesión actual:', userEmail);
       
-      // NO guardar en SecureStore, solo en memoria (Redux)
-      // Esto hace que la configuración se pierda al cerrar sesión
-      
       return { 
         enabled: true, 
         userEmail,
-        sessionOnly: true // Flag para indicar que es solo para esta sesión
+        sessionOnly: true,
+        setupTime: Date.now()
       };
     } catch (error) {
       console.error('[BiometricSlice] ❌ Error habilitando biometría:', error);
@@ -128,7 +115,7 @@ export const enableBiometricForSession = createAsyncThunk(
   }
 );
 
-// ✅ Deshabilitar biometría (limpiar TODO)
+// Deshabilitar biometría (limpiar TODO)
 export const disableBiometric = createAsyncThunk(
   'biometric/disable',
   async (_, { rejectWithValue }) => {
@@ -149,26 +136,28 @@ export const disableBiometric = createAsyncThunk(
   }
 );
 
-// ✅ Cargar configuración (ahora SÍ respeta el estado persistido)
+// Cargar configuración respetando el estado persistido
 export const loadBiometricConfig = createAsyncThunk(
   'biometric/loadConfig',
   async (_, { getState, rejectWithValue }) => {
     try {
       console.log('[BiometricSlice] 📂 Cargando configuración biométrica...');
       
-      // ✅ Redux Persist ya cargó el estado, solo verificamos disponibilidad
+      // Redux Persist ya cargó el estado
       const currentState = getState().biometric;
       
-      console.log('[BiometricSlice] Estado actual:', {
+      console.log('[BiometricSlice] Estado persistido:', {
         enabled: currentState.enabled,
         userEmail: currentState.userEmail,
-        sessionOnly: currentState.sessionOnly
+        sessionOnly: currentState.sessionOnly,
+        setupTime: currentState.setupTime
       });
       
-      // Si estaba habilitado, mantenerlo (Redux Persist ya lo restauró)
-      // Solo reseteamos setupPromptShown para que NO vuelva a mostrar el modal
+      // MANTENER el estado que Redux Persist cargó
+      // Solo resetear setupPromptShown para permitir que aparezca de nuevo si hace login
       return {
-        keepCurrentState: true, // Señal para mantener el estado actual
+        keepCurrentState: true,
+        resetPrompt: true
       };
     } catch (error) {
       console.error('[BiometricSlice] ❌ Error cargando configuración:', error);
@@ -181,16 +170,16 @@ export const updateLastUsed = createAsyncThunk(
   'biometric/updateLastUsed',
   async (_, { rejectWithValue }) => {
     try {
-      const timestamp = Date.now().toString();
-      // NO guardar en SecureStore, solo actualizar en memoria
-      return { lastUsed: parseInt(timestamp) };
+      const timestamp = Date.now();
+      console.log('[BiometricSlice] ⏰ Actualizando último uso:', timestamp);
+      return { lastUsed: timestamp };
     } catch (error) {
       return rejectWithValue('Error actualizando último uso');
     }
   }
 );
 
-// ✅ Marcar que se mostró el prompt de configuración
+// Marcar que se mostró el prompt de configuración
 export const markSetupPromptShown = createAsyncThunk(
   'biometric/markPromptShown',
   async (_, { rejectWithValue }) => {
@@ -217,15 +206,15 @@ const biometricSlice = createSlice({
     supportedTypes: [],
     isLoading: false,
     error: null,
-    sessionOnly: false, // Indica si la biometría es solo para esta sesión
-    setupPromptShown: false, // ✅ CRÍTICO: Controla si ya se mostró el modal post-login
+    sessionOnly: false,
+    setupPromptShown: false, // Se resetea al cargar pero se mantiene enabled
   },
   reducers: {
     clearBiometricError: (state) => {
       state.error = null;
     },
     
-    // ✅ Reset completo al hacer logout
+    // Reset completo al hacer logout
     resetBiometricOnLogout: (state) => {
       console.log('[BiometricSlice] 🔄 Reset por logout - Limpiando TODO');
       state.enabled = false;
@@ -233,7 +222,7 @@ const biometricSlice = createSlice({
       state.setupTime = null;
       state.lastUsed = null;
       state.sessionOnly = false;
-      state.setupPromptShown = false; // ✅ IMPORTANTE: Reset para que vuelva a aparecer
+      state.setupPromptShown = false;
       state.error = null;
     },
     
@@ -291,7 +280,7 @@ const biometricSlice = createSlice({
         state.isLoading = false;
         state.enabled = true;
         state.userEmail = action.payload.userEmail;
-        state.setupTime = Date.now();
+        state.setupTime = action.payload.setupTime;
         state.sessionOnly = true;
         console.log('[BiometricSlice] ✅ Biometría activada para sesión');
       })
@@ -318,16 +307,19 @@ const biometricSlice = createSlice({
         state.error = action.payload;
       })
       
-      // Load Config
+      // Load Config - Mantener estado persistido
       .addCase(loadBiometricConfig.fulfilled, (state, action) => {
         state.isLoading = false;
-        // ✅ Siempre cargar como deshabilitado
-        state.enabled = false;
-        state.userEmail = null;
-        state.setupTime = null;
-        state.lastUsed = null;
-        state.sessionOnly = false;
-        state.setupPromptShown = false; // ✅ Reset al cargar
+        
+        // MANTENER enabled, userEmail, setupTime del estado persistido
+        // Solo resetear setupPromptShown para que NO bloquee el modal post-login
+        state.setupPromptShown = false;
+        
+        console.log('[BiometricSlice] ✅ Config cargada, manteniendo estado:', {
+          enabled: state.enabled,
+          userEmail: state.userEmail,
+          setupTime: state.setupTime
+        });
       })
       
       // Update Last Used
