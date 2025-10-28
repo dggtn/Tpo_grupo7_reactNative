@@ -43,8 +43,6 @@ export default function LoginScreen({ navigation }) {
 
   const initializeScreen = async () => {
     try {
-      // NO llamar checkBiometricAvailability (RootNavigator ya lo hizo)
-      // Solo cargar el tipo de biometría
       const typeName = await getBiometricTypeName();
       setBiometricTypeName(typeName);
       console.log('[LoginScreen] ✅ Inicialización completa');
@@ -106,12 +104,15 @@ export default function LoginScreen({ navigation }) {
       
       showSuccessToast('¡Bienvenido!', 'Has iniciado sesión correctamente');
       
-      // El modal se mostrará automáticamente en AppStack
-      
     } catch (error) {
       console.error('[LoginScreen] ❌ Error en login:', error);
       showErrorToast('Error', error || 'Credenciales inválidas');
     }
+  };
+
+  const handleRecoverAccess = () => {
+    console.log('[LoginScreen] 🔄 Navegando a Recovery');
+    navigation.navigate('Recovery');
   };
 
   const shouldShowBiometricButton = biometricEnabled && 
@@ -120,10 +121,10 @@ export default function LoginScreen({ navigation }) {
 
   return (
      <LinearGradient
-          colors={['#71c9efff', '#e99a84ff', '#f1dca0ff']} // Array of colors for the gradient
+          colors={['#71c9efff', '#e99a84ff', '#f1dca0ff']}
           style={styles.container}
-          start={{ x: 0, y: 0 }} // Start point of the gradient (top-left)
-          end={{ x: 1, y: 1 }}   // End point of the gradient (bottom-right)
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
       >
     <KeyboardAvoidingView 
       style={styles.container}
@@ -237,6 +238,16 @@ export default function LoginScreen({ navigation }) {
               ¿No tienes cuenta? <Text style={styles.linkBold}>Regístrate</Text>
             </Text>
           </TouchableOpacity>
+
+          {/* NUEVO: Botón de Recuperar Acceso */}
+          <TouchableOpacity 
+            onPress={handleRecoverAccess}
+            style={styles.recoveryButton}
+            disabled={isLoading}
+          >
+            <Ionicons name="help-circle-outline" size={18} color="#2c2d52ff" />
+            <Text style={styles.recoveryButtonText}>Recuperar Acceso</Text>
+          </TouchableOpacity>
         </View>
      
       </ScrollView>
@@ -249,7 +260,6 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-   
   },
   scrollContent: {
     flexGrow: 1,
@@ -356,7 +366,7 @@ const styles = StyleSheet.create({
   linksContainer: {
     alignItems: 'center',
     marginTop: 20,
-  
+    gap: 15,
   },
   linkText: {
     textAlign: 'center',
@@ -367,5 +377,18 @@ const styles = StyleSheet.create({
     color: '#2c2d52ff',
     fontWeight: 'bold',
     fontSize: 17,
+  },
+  recoveryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  recoveryButtonText: {
+    color: '#2c2d52ff',
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });
