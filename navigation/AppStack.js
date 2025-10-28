@@ -1,37 +1,53 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
+import { AppState, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import HomeScreen from '../gymApp/screens/HomeScreen';
 import PerfilScreen from '../gymApp/screens/PerfilScreen';
 import BiometricSetupManager from '../gymApp/components/BiometricSetupManager';
-import BiometricGate from '../gymApp/components/BiometricGate';
-import { selectBiometricEnabled } from '../store/slices/biometricSlice';
+import { 
+  selectBiometricEnabled,
+  authenticateWithBiometric,
+  updateLastUsed,
+} from '../store/slices/biometricSlice';
 import { selectJustLoggedIn } from '../store/slices/authSlice';
+import { logout } from '../store/slices/authSlice';
+import { getBiometricTypeName } from '../utils/biometricUtils';
+import { showErrorToast } from '../utils/toastUtils';
 
 const Tab = createBottomTabNavigator();
 
 export default function AppStack() {
+  const dispatch = useDispatch();
   const biometricEnabled = useSelector(selectBiometricEnabled);
   const justLoggedIn = useSelector(selectJustLoggedIn);
   
-  // ✅ Estado para controlar la pantalla de bloqueo biométrico
-  const [showBiometricGate, setShowBiometricGate] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  // Estados para el bloqueo biométrico integrado
+  const [isLocked, setIsLocked] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [biometricTypeName, setBiometricTypeName] = useState('Huella Digital');
+  const [authAttempted, setAuthAttempted] = useState(false);
   const appState = useRef(AppState.currentState);
 
-  // ✅ Detectar cuando la app vuelve de background
+  // Cargar tipo de biometría
+  useEffect(() => {
+    loadBiometricType();
+  }, []);
+
+  const loadBiometricType = async () => {
+    const typeName = await getBiometricTypeName();
+    setBiometricTypeName(typeName);
+  };
+
+  // Detectar cuando la app vuelve de background
   useEffect(() => {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-    return () => {
-      subscription.remove();
-    };
+    return () => subscription.remove();
   }, [biometricEnabled, justLoggedIn]);
 
   const handleAppStateChange = (nextAppState) => {
-    console.log('[AppStack] 🔄 AppState cambió:', appState.current, '->', nextAppState);
+    console.log('[AppStack] 🔄 AppState:', appState.current, '->', nextAppState);
 
     // Si la app vuelve a foreground (activa)
     if (
@@ -40,25 +56,127 @@ export default function AppStack() {
     ) {
       console.log('[AppStack] 📱 App volvió a primer plano');
 
-      // ✅ CRÍTICO: Mostrar gate SOLO si:
+      // Mostrar bloqueo SOLO si:
       // 1. Biometría está habilitada
-      // 2. NO acaba de loguearse (para no interferir con el modal de setup)
+      // 2. NO acaba de loguearse (para no interferir con el setup modal)
       if (biometricEnabled && !justLoggedIn) {
-        console.log('[AppStack] 🔒 Mostrando pantalla de bloqueo biométrico');
-        setIsAuthenticated(false);
-        setShowBiometricGate(true);
+        console.log('[AppStack] 🔒 Bloqueando pantalla');
+        setIsLocked(true);
+        setAuthAttempted(false);
       }
     }
 
     appState.current = nextAppState;
   };
 
-  const handleBiometricAuthenticated = () => {
-    console.log('[AppStack] ✅ Usuario autenticado, ocultando gate');
-    setIsAuthenticated(true);
-    setShowBiometricGate(false);
+  // Auto-autenticar cuando se bloquea
+  useEffect(() => {
+    if (isLocked && !authAttempted) {
+      handleAuthenticate();
+    }
+  }, [isLocked, authAttempted]);
+
+  const handleAuthenticate = async () => {
+    setIsAuthenticating(true);
+    setAuthAttempted(true);
+
+    try {
+      console.log('[AppStack] 🔐 Solicitando autenticación...');
+
+      await dispatch(
+        authenticateWithBiometric('Verificar identidad')
+      ).unwrap();
+
+      console.log('[AppStack] ✅ Autenticación exitosa');
+
+      // Actualizar último uso
+      await dispatch(updateLastUsed());
+
+      // Desbloquear
+      setIsLocked(false);
+      setAuthAttempted(false);
+    } catch (error) {
+      console.error('[AppStack] ❌ Error de autenticación:', error);
+
+      if (error.toString().includes('cancelada') || error.toString().includes('cancel')) {
+        console.log('[AppStack] Usuario canceló autenticación');
+        showErrorToast('Cancelado', 'Debes autenticarte para continuar');
+      } else {
+        showErrorToast('Error', 'No se pudo autenticar');
+      }
+
+      setIsAuthenticating(false);
+      setAuthAttempted(false);
+    }
   };
 
+  const handleLogout = async () => {
+    try {
+      console.log('[AppStack] 🚪 Cerrando sesión por fallo de autenticación');
+      await dispatch(logout()).unwrap();
+    } catch (error) {
+      console.error('[AppStack] Error en logout:', error);
+    }
+  };
+
+  // Renderizar pantalla de bloqueo si está bloqueado
+  if (isLocked) {
+    return (
+      <View style={styles.lockContainer}>
+        <View style={styles.lockContent}>
+          {/* Icono */}
+          <View style={styles.iconContainer}>
+            <Ionicons
+              name={
+                biometricTypeName === 'PIN del Dispositivo'
+                  ? 'keypad'
+                  : 'finger-print'
+              }
+              size={80}
+              color="#74C1E6"
+            />
+          </View>
+
+          {/* Título */}
+          <Text style={styles.lockTitle}>Verificación Requerida</Text>
+          <Text style={styles.lockSubtitle}>
+            Usa tu {biometricTypeName} para continuar
+          </Text>
+
+          {/* Botón de autenticación */}
+          <TouchableOpacity
+            style={[styles.authButton, isAuthenticating && styles.buttonDisabled]}
+            onPress={handleAuthenticate}
+            disabled={isAuthenticating}
+          >
+            {isAuthenticating ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="shield-checkmark" size={24} color="#fff" />
+                <Text style={styles.authButtonText}>Autenticar</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Botón de cerrar sesión */}
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutButtonText}>Cerrar sesión</Text>
+          </TouchableOpacity>
+
+          {/* Info */}
+          <View style={styles.infoBox}>
+            <Ionicons name="information-circle" size={18} color="#666" />
+            <Text style={styles.infoText}>
+              La autenticación biométrica está activa para esta sesión
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // Renderizar tabs normalmente
   return (
     <>
       <Tab.Navigator
@@ -83,8 +201,6 @@ export default function AppStack() {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
-          // ✅ Deshabilitar interacción si no está autenticado
-          tabBarStyle: showBiometricGate ? { display: 'none' } : undefined,
         })}
       >
         <Tab.Screen 
@@ -99,13 +215,103 @@ export default function AppStack() {
         />
       </Tab.Navigator>
       
-      {/* ✅ Modal de configuración biométrica (se muestra después de login) */}
+      {/* Modal de configuración biométrica (solo después de login) */}
       <BiometricSetupManager />
-
-      {/* ✅ Pantalla de bloqueo biométrico (se muestra al volver de background) */}
-      {showBiometricGate && (
-        <BiometricGate onAuthenticated={handleBiometricAuthenticated} />
-      )}
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  lockContainer: {
+    flex: 1,
+    backgroundColor: '#faf7f7ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lockContent: {
+    width: '85%',
+    maxWidth: 400,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  iconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(116, 193, 230, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  lockTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#121212',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  lockSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 32,
+    textAlign: 'center',
+  },
+  authButton: {
+    flexDirection: 'row',
+    backgroundColor: '#74C1E6',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    width: '100%',
+    marginBottom: 16,
+    shadowColor: '#74C1E6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  authButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  logoutButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    marginBottom: 20,
+  },
+  logoutButtonText: {
+    color: '#f44336',
+    fontSize: 16,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+    width: '100%',
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+  },
+});
