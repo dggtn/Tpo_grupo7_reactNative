@@ -279,7 +279,7 @@ export default function AppStack() {
         <Tab.Screen 
           name="Home" 
           component={HomeScreen}
-          options={{ title: 'Gym App' }}
+          options={{ title: 'Ritmo Fit' }}
         />
         <Tab.Screen 
           name="Perfil" 

@@ -4,6 +4,7 @@ import {
   View,
   Text,
   TextInput,
+  Image,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -157,9 +158,10 @@ export default function RegisterScreen({ navigation, route }) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.logoContainer}>
-            <Ionicons name="barbell-sharp" size={64} color="#fcefd5de" />
-            <Text style={styles.title}>RitmoFit</Text>
-            <Text style={styles.subtitle}>Registro de Usuario</Text>
+            <Image source={require("../../../assets/ritmo2-removebg-preview.png")}
+                              style={styles.avatar}
+                      />
+            <Text style={styles.title}>Registro de Usuario</Text>
           </View>
 
           <View style={styles.inputContainer}>
@@ -328,17 +330,20 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   title: {
-    fontSize: 32,
+    fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
     marginTop: 10,
-    color: '#2c2d52ff',
+    color: '#d5f2ffe4',
   },
-  subtitle: {
-    fontSize: 18,
-    color: '#ffffffe7',
-    marginTop: 5,
-  },
+  avatar: {
+   width: 120,
+   height: 120,
+   borderRadius: 45,
+   borderWidth: 4,
+   borderColor: "#ffffff29",
+   padding:80
+ },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',

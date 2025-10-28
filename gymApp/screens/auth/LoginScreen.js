@@ -3,7 +3,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { 
   View, 
   Text, 
-  TextInput, 
+  TextInput,
+  Image, 
   TouchableOpacity, 
   StyleSheet, 
   ActivityIndicator,
@@ -142,9 +143,11 @@ export default function LoginScreen({ navigation }) {
       >
        
         <View style={styles.header}>
-          <Ionicons name="barbell-sharp" size={64} color="#fcefd5de" />
-          <Text style={styles.title}>RitmoFit</Text>
-          <Text style={styles.subtitle}>Bienvenido de vuelta</Text>
+          <Image source={require("../../../assets/ritmo-removebg-preview.png")}
+                  style={styles.avatar}
+          />
+          
+          <Text style={styles.title}>Bienvenido de vuelta</Text>
         </View>
 
         {/* Botón de Login Biométrico */}
@@ -285,17 +288,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
+  avatar: {
+   width: 120,
+   height: 120,
+   borderRadius: 45,
+   borderWidth: 4,
+   borderColor: "#ffffff29",
+   padding:80
+ },
   title: {
-    fontSize: 32,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#2c2d52ff',
+    color: '#d5f2ffe4',
     marginTop: 10,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#ffffffe7',
-    marginTop: 5,
-  },
+  
   biometricButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -385,8 +392,8 @@ const styles = StyleSheet.create({
   },
   linkText: {
     textAlign: 'center',
-    color: '#ffffffe7',
-    fontSize: 14,
+    color: '#d5f2ffe4',
+    fontSize: 15,
   },
   linkBold: {
     color: '#2c2d52ff',
