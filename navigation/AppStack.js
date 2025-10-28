@@ -7,9 +7,7 @@ import HomeScreen from '../gymApp/screens/HomeScreen';
 import PerfilScreen from '../gymApp/screens/PerfilScreen';
 import BiometricSetupManager from '../gymApp/components/BiometricSetupManager';
 import BiometricGate from '../gymApp/components/BiometricGate';
-import { 
-  selectBiometricEnabled,
-} from '../store/slices/biometricSlice';
+import { selectBiometricEnabled } from '../store/slices/biometricSlice';
 import { selectJustLoggedIn } from '../store/slices/authSlice';
 
 const Tab = createBottomTabNavigator();
@@ -18,12 +16,12 @@ export default function AppStack() {
   const biometricEnabled = useSelector(selectBiometricEnabled);
   const justLoggedIn = useSelector(selectJustLoggedIn);
   
-  // Estado para controlar la pantalla de bloqueo biométrico
+  // ✅ Estado para controlar la pantalla de bloqueo biométrico
   const [showBiometricGate, setShowBiometricGate] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
   const appState = useRef(AppState.currentState);
 
-  // Detectar cuando la app vuelve de background
+  // ✅ Detectar cuando la app vuelve de background
   useEffect(() => {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
 
@@ -42,7 +40,7 @@ export default function AppStack() {
     ) {
       console.log('[AppStack] 📱 App volvió a primer plano');
 
-      // Mostrar gate SOLO si:
+      // ✅ CRÍTICO: Mostrar gate SOLO si:
       // 1. Biometría está habilitada
       // 2. NO acaba de loguearse (para no interferir con el modal de setup)
       if (biometricEnabled && !justLoggedIn) {
@@ -85,7 +83,7 @@ export default function AppStack() {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
-          // Deshabilitar interacción si no está autenticado
+          // ✅ Deshabilitar interacción si no está autenticado
           tabBarStyle: showBiometricGate ? { display: 'none' } : undefined,
         })}
       >
@@ -101,10 +99,10 @@ export default function AppStack() {
         />
       </Tab.Navigator>
       
-      {/* Modal de configuración biométrica (se muestra después de login) */}
+      {/* ✅ Modal de configuración biométrica (se muestra después de login) */}
       <BiometricSetupManager />
 
-      {/* Pantalla de bloqueo biométrico (se muestra al volver de background) */}
+      {/* ✅ Pantalla de bloqueo biométrico (se muestra al volver de background) */}
       {showBiometricGate && (
         <BiometricGate onAuthenticated={handleBiometricAuthenticated} />
       )}

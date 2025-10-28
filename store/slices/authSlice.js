@@ -96,14 +96,15 @@ export const logout = createAsyncThunk(
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
-    token: null,
-    isAuthenticated: false,
-    isLoading: false,
-    error: null,
-    loginTime: null,
-    pendingEmail: null, // Email con registro pendiente
-    registrationInProgress: false,
-  },
+  token: null,
+  isAuthenticated: false,
+  isLoading: false,
+  error: null,
+  loginTime: null,
+  pendingEmail: null,
+  registrationInProgress: false,
+  justLoggedIn: false, 
+},
   reducers: {
     clearError: (state) => {
       state.error = null;
@@ -137,6 +138,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.loginTime = Date.now();
         state.error = null;
+        state.justLoggedIn = true;
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
