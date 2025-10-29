@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  ScrollView
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -233,6 +234,10 @@ export default function VerificationScreen({ navigation, route }) {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        <ScrollView 
+                   contentContainerStyle={styles.scrollContent}
+                   keyboardShouldPersistTaps="handled"
+        >
         <View style={styles.content}>
           <View style={styles.iconContainer}>
             <Ionicons name="mail-outline" size={80} color="#c25a06be" />
@@ -382,6 +387,7 @@ export default function VerificationScreen({ navigation, route }) {
             </View>
           </View>
         </Modal>
+        </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
@@ -390,6 +396,12 @@ export default function VerificationScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    
+    padding: 20,
   },
   content: {
     flex: 1,

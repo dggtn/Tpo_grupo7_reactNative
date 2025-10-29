@@ -190,6 +190,7 @@ export default function ResetPassVerifScreen({ navigation, route }) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
+        <View style={styles.content}>
           <View style={styles.iconContainer}>
             <Ionicons name="shield-checkmark-outline" size={80} color="#c25a06be" />
           </View>
@@ -300,6 +301,7 @@ export default function ResetPassVerifScreen({ navigation, route }) {
               El código expira en 15 minutos. Puedes solicitar uno nuevo después de 2 minutos.
             </Text>
           </View>
+        </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -310,8 +312,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+ scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center',
+    
+    padding: 20,
+  },
+  content: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
