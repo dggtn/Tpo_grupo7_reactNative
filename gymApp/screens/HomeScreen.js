@@ -163,7 +163,7 @@ export default function HomeScreen() {
 
 
  return (
-   <ScrollView style={styles.scrollView}>
+   <View >
      <View>
        <CarouselComponent style={styles.carousel} />
      </View>
@@ -215,7 +215,7 @@ export default function HomeScreen() {
     
        </>
      )}
-   </ScrollView>
+   </View>
  );
 }
 
