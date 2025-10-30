@@ -266,7 +266,7 @@ export default function AppStack() {
 
             return <Ionicons name={iconName} size={size} color={color} />;
           },
-          tabBarActiveTintColor: '#65bde6ff',
+          tabBarActiveTintColor: '#2fbabaff',
           tabBarInactiveTintColor: 'gray',
           headerBackground: () => <HeaderGradient />,
           headerTitle: () => (
@@ -302,19 +302,19 @@ export default function AppStack() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'flex-start',
-  
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingTop:15,
     paddingBottom:0,
-    paddingLeft:0,
+    left:0,
   
   
   },
   logo: {
     width: 120,
     height: 120,
-    marginLeft:0,
-    paddingLeft:0,
+    left:0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
