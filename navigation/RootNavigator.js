@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { HeaderGradient } from '../utils/HeaderGradient';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
@@ -148,10 +149,11 @@ export default function RootNavigator() {
               options={{
                 headerShown: true,
                 title: 'Detalle del Curso',
-                headerStyle: {
-                  backgroundColor: '#74C1E6',
+                headerBackground: () => <HeaderGradient />,
+                headerTintColor: '#06122eff',
+                headerTitleStyle: {
+                  fontWeight: 'bold',
                 },
-                headerTintColor: '#fff',
               }}
             />
           </>

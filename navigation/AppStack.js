@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AppState, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { HeaderGradient } from '../utils/HeaderGradient';
+import { AppState, View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
@@ -265,15 +266,19 @@ export default function AppStack() {
 
             return <Ionicons name={iconName} size={size} color={color} />;
           },
-          tabBarActiveTintColor: '#74C1E6',
+          tabBarActiveTintColor: '#65bde6ff',
           tabBarInactiveTintColor: 'gray',
-          headerStyle: {
-            backgroundColor: '#74C1E6',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
+          headerBackground: () => <HeaderGradient />,
+          headerTitle: () => (
+            <View style={styles.container}>
+              <Image
+                source={require('../assets/ritmoLogo-removebg-preview.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
+          ),
+        
         })}
       >
         <Tab.Screen 
@@ -295,6 +300,26 @@ export default function AppStack() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'flex-start',
+  
+    paddingTop:15,
+    paddingBottom:0,
+    paddingLeft:0,
+  
+  
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginLeft:0,
+    paddingLeft:0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
   lockContainer: {
     flex: 1,
     backgroundColor: '#faf7f7ff',
