@@ -2,10 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { HeaderGradient } from '../utils/HeaderGradient';
 import { AppState, View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import HomeScreen from '../gymApp/screens/HomeScreen';
 import PerfilScreen from '../gymApp/screens/PerfilScreen';
+import DetalleCursoScreen from '../gymApp/screens/DetalleCursoScreen';
 import BiometricSetupManager from '../gymApp/components/BiometricSetupManager';
 import { 
   selectBiometricEnabled,
@@ -19,6 +22,40 @@ import { getBiometricTypeName } from '../utils/biometricUtils';
 import { showErrorToast } from '../utils/toastUtils';
 
 const Tab = createBottomTabNavigator();
+const HomeStack = createNativeStackNavigator();
+
+// Stack Navigator para Home (incluye DetalleCurso)
+function HomeStackScreen() {
+  return (
+    <HomeStack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <HomeStack.Screen 
+        name="HomeMain" 
+        component={HomeScreen}
+        options={{ 
+          headerShown: false
+        }}
+      />
+      <HomeStack.Screen 
+        name="DetalleCurso" 
+        component={DetalleCursoScreen}
+        options={{
+          headerShown: true,
+          title: 'Detalle del Curso',
+          headerBackground: () => <HeaderGradient />,
+          headerTintColor: '#06122eff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerBackTitleVisible: false,
+        }}
+      />
+    </HomeStack.Navigator>
+  );
+}
 
 export default function AppStack() {
   const dispatch = useDispatch();
@@ -26,7 +63,6 @@ export default function AppStack() {
   const biometricAvailable = useSelector(selectBiometricAvailable);
   const justLoggedIn = useSelector(selectJustLoggedIn);
   
-  // Estados para el bloqueo biométrico integrado
   const [isLocked, setIsLocked] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [biometricTypeName, setBiometricTypeName] = useState('Huella Digital');
@@ -34,7 +70,6 @@ export default function AppStack() {
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const appState = useRef(AppState.currentState);
 
-  // LOGS DETALLADOS en mount
   useEffect(() => {
     console.log('[AppStack] 🚀 MONTADO - Estado inicial:', {
       biometricEnabled,
@@ -44,12 +79,10 @@ export default function AppStack() {
     });
   }, []);
 
-  // LOGS cuando cambia biometricEnabled
   useEffect(() => {
     console.log('[AppStack] 🔄 biometricEnabled cambió a:', biometricEnabled);
   }, [biometricEnabled]);
 
-  // Cargar tipo de biometría
   useEffect(() => {
     loadBiometricType();
   }, []);
@@ -60,7 +93,6 @@ export default function AppStack() {
     console.log('[AppStack] 📱 Tipo biométrico:', typeName);
   };
 
-  // Check inicial al montar si debe bloquear
   useEffect(() => {
     const performInitialCheck = async () => {
       console.log('[AppStack] 🔍 Check inicial de bloqueo...');
@@ -70,9 +102,6 @@ export default function AppStack() {
         justLoggedIn,
         initialCheckDone
       });
-
-      // Si biometría está habilitada Y no acaba de loguearse
-      // Y no se ha hecho el check inicial → BLOQUEAR
       if (biometricEnabled && biometricAvailable && !justLoggedIn && !initialCheckDone) {
         console.log('[AppStack] 🔒 BLOQUEANDO por check inicial');
         setIsLocked(true);
@@ -88,13 +117,11 @@ export default function AppStack() {
       }
     };
 
-    // Solo ejecutar el check una vez que tengamos los valores del estado
     if (biometricAvailable !== undefined && !initialCheckDone) {
       performInitialCheck();
     }
   }, [biometricEnabled, biometricAvailable, justLoggedIn, initialCheckDone]);
 
-  // Detectar cuando la app vuelve de background
   useEffect(() => {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
@@ -102,40 +129,23 @@ export default function AppStack() {
 
   const handleAppStateChange = (nextAppState) => {
     console.log('[AppStack] 🔄 AppState:', appState.current, '->', nextAppState);
-    console.log('[AppStack] Estado biométrico:', {
-      enabled: biometricEnabled,
-      available: biometricAvailable,
-      justLoggedIn
-    });
 
-    // Si la app vuelve a foreground (activa)
     if (
       appState.current.match(/inactive|background/) &&
       nextAppState === 'active'
     ) {
       console.log('[AppStack] 📱 App volvió a primer plano');
 
-      // Mostrar bloqueo SOLO si:
-      // 1. Biometría está habilitada
-      // 2. Biometría está disponible
-      // 3. NO acaba de loguearse (para no interferir con el setup modal)
       if (biometricEnabled && biometricAvailable && !justLoggedIn) {
         console.log('[AppStack] 🔒 Bloqueando pantalla por reactivación');
         setIsLocked(true);
         setAuthAttempted(false);
-      } else {
-        console.log('[AppStack] ℹ️ No se bloquea por reactivación:', {
-          enabled: biometricEnabled,
-          available: biometricAvailable,
-          justLogged: justLoggedIn
-        });
       }
     }
 
     appState.current = nextAppState;
   };
 
-  // Auto-autenticar cuando se bloquea
   useEffect(() => {
     if (isLocked && !authAttempted) {
       console.log('[AppStack] 🔐 Auto-iniciando autenticación...');
@@ -155,11 +165,7 @@ export default function AppStack() {
       ).unwrap();
 
       console.log('[AppStack] ✅ Autenticación exitosa');
-
-      // Actualizar último uso
       await dispatch(updateLastUsed());
-
-      // Desbloquear
       setIsLocked(false);
       setAuthAttempted(false);
     } catch (error) {
@@ -186,18 +192,11 @@ export default function AppStack() {
     }
   };
 
-  // LOGS cuando cambia isLocked
-  useEffect(() => {
-    console.log('[AppStack] 🔒 Estado de bloqueo cambió a:', isLocked);
-  }, [isLocked]);
-
-  // Renderizar pantalla de bloqueo si está bloqueado
   if (isLocked) {
     console.log('[AppStack] 🔒 RENDERIZANDO PANTALLA DE BLOQUEO');
     return (
       <View style={styles.lockContainer}>
         <View style={styles.lockContent}>
-          {/* Icono */}
           <View style={styles.iconContainer}>
             <Ionicons
               name={
@@ -210,13 +209,11 @@ export default function AppStack() {
             />
           </View>
 
-          {/* Título */}
           <Text style={styles.lockTitle}>Verificación Requerida</Text>
           <Text style={styles.lockSubtitle}>
             Usa tu {biometricTypeName} para continuar
           </Text>
 
-          {/* Botón de autenticación */}
           <TouchableOpacity
             style={[styles.authButton, isAuthenticating && styles.buttonDisabled]}
             onPress={handleAuthenticate}
@@ -232,12 +229,10 @@ export default function AppStack() {
             )}
           </TouchableOpacity>
 
-          {/* Botón de cerrar sesión */}
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Text style={styles.logoutButtonText}>Cerrar sesión</Text>
           </TouchableOpacity>
 
-          {/* Info */}
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={18} color="#666" />
             <Text style={styles.infoText}>
@@ -249,7 +244,6 @@ export default function AppStack() {
     );
   }
 
-  // Renderizar tabs normalmente
   console.log('[AppStack] 📱 RENDERIZANDO TABS NORMALMENTE');
   return (
     <>
@@ -268,32 +262,53 @@ export default function AppStack() {
           },
           tabBarActiveTintColor: '#2fbabaff',
           tabBarInactiveTintColor: 'gray',
-          headerBackground: () => <HeaderGradient />,
-          headerTitle: () => (
-            <View style={styles.container}>
-              <Image
-                source={require('../assets/ritmoLogo-removebg-preview.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            </View>
-          ),
-        
         })}
       >
+        {/* AHORA Home es un Stack que incluye DetalleCurso */}
         <Tab.Screen 
           name="Home" 
-          component={HomeScreen}
-          options={{ title: 'Ritmo Fit' }}
+          component={HomeStackScreen}
+          options={({ route }) => {
+            // Usar getFocusedRouteNameFromRoute para obtener la ruta activa
+            const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeMain';
+            
+            console.log('[AppStack Tab] Ruta enfocada:', routeName);
+            
+            return {
+              title: 'Ritmo Fit',
+              headerShown: routeName !== 'DetalleCurso', // Ocultar SOLO en DetalleCurso
+              headerBackground: () => <HeaderGradient />,
+              headerTitle: () => (
+                <View style={styles.container}>
+                  <Image
+                    source={require('../assets/ritmoLogo-removebg-preview.png')}
+                    style={styles.logo}
+                    resizeMode="contain"
+                  />
+                </View>
+              ),
+            };
+          }}
         />
         <Tab.Screen 
           name="Perfil" 
           component={PerfilScreen}
-          options={{ title: 'Mi Perfil' }}
+          options={{ 
+            title: 'Mi Perfil',
+            headerBackground: () => <HeaderGradient />,
+            headerTitle: () => (
+              <View style={styles.container}>
+                <Image
+                  source={require('../assets/ritmoLogo-removebg-preview.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
+            ),
+          }}
         />
       </Tab.Navigator>
       
-      {/* Modal de configuración biométrica (solo después de login) */}
       <BiometricSetupManager />
     </>
   );
@@ -305,16 +320,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop:15,
-    paddingBottom:0,
-    left:0,
-  
-  
+    paddingTop: 15,
+    paddingBottom: 0,
+    left: 0,
   },
   logo: {
     width: 120,
     height: 120,
-    left:0,
+    left: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,

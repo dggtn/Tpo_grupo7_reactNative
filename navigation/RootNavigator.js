@@ -1,12 +1,11 @@
 import React, { useEffect } from 'react';
-import { HeaderGradient } from '../utils/HeaderGradient';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
 import AuthStack from './AuthStack';
 import AppStack from './AppStack';
 import ErrorScreen from '../gymApp/screens/auth/ErrorScreen';
-import DetalleCursoScreen from '../gymApp/screens/DetalleCursoScreen';
+
 import { 
   selectIsAuthenticated,
   selectToken 
@@ -31,7 +30,6 @@ export default function RootNavigator() {
   const biometricState = useSelector(selectBiometric);
   const [isReady, setIsReady] = React.useState(false);
 
-  // LOG del estado completo al montar
   useEffect(() => {
     console.log('[RootNavigator] 🚀 MONTADO - Estado completo:', {
       isAuthenticated,
@@ -47,7 +45,6 @@ export default function RootNavigator() {
     });
   }, []);
 
-  //LOG cuando cambia autenticación
   useEffect(() => {
     console.log('[RootNavigator] 🔄 Estado de autenticación cambió:', {
       isAuthenticated,
@@ -56,7 +53,6 @@ export default function RootNavigator() {
     });
   }, [isAuthenticated, token, showErrorScreen]);
 
-  //LOG cuando cambia estado biométrico
   useEffect(() => {
     console.log('[RootNavigator] 🔐 Estado biométrico cambió:', {
       enabled: biometricState.enabled,
@@ -66,7 +62,6 @@ export default function RootNavigator() {
     });
   }, [biometricState.enabled, biometricState.userEmail, biometricState.isAvailable]);
 
-  // Inicialización simplificada
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -77,7 +72,6 @@ export default function RootNavigator() {
           setupTime: biometricState.setupTime,
         });
         
-        // SOLO verificar disponibilidad (Redux Persist ya cargó el estado)
         const result = await dispatch(checkBiometricAvailability(false)).unwrap();
         console.log('[RootNavigator] ✅ Disponibilidad verificada:', result);
         
@@ -92,7 +86,6 @@ export default function RootNavigator() {
     initializeApp();
   }, []);
 
-  // Limpiar estado biométrico cuando se cierra sesión
   useEffect(() => {
     if (!isAuthenticated && !token) {
       console.log('[RootNavigator] 🗑️ Sesión cerrada, limpiando biometría');
@@ -135,28 +128,13 @@ export default function RootNavigator() {
         {showErrorScreen ? (
           <Stack.Screen name="Error" component={ErrorScreen} />
         ) : isAuthenticated && token ? (
-          <>
-            <Stack.Screen 
-              name="App" 
-              component={AppStack}
-              options={{
-                animationTypeForReplace: 'pop',
-              }}
-            />
-            <Stack.Screen 
-              name="DetalleCurso" 
-              component={DetalleCursoScreen}
-              options={{
-                headerShown: true,
-                title: 'Detalle del Curso',
-                headerBackground: () => <HeaderGradient />,
-                headerTintColor: '#06122eff',
-                headerTitleStyle: {
-                  fontWeight: 'bold',
-                },
-              }}
-            />
-          </>
+          <Stack.Screen 
+            name="App" 
+            component={AppStack}
+            options={{
+              animationTypeForReplace: 'pop',
+            }}
+          />
         ) : (
           <Stack.Screen 
             name="Auth" 
@@ -170,3 +148,4 @@ export default function RootNavigator() {
     </NavigationContainer>
   );
 }
+
