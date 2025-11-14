@@ -52,7 +52,13 @@ export default function MisReservasScreen() {
 
       setItems(lista);
     } catch (e) {
-      Alert.alert("Reservas", e.message || "No se pudo cargar tus reservas");
+      const msg = (e?.message || "").toLowerCase();
+    
+      // 👉 Si el back dice que no hay reservas, NO lo trato como error visible
+      if (!msg.includes("no hay reservas")) {
+        Alert.alert("Reservas", e.message || "No se pudo cargar tus reservas");
+      }
+    
       setItems([]);
     } finally {
       setLoading(false);
