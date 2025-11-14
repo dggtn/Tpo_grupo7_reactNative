@@ -21,6 +21,7 @@ import { logout } from '../store/slices/authSlice';
 import { getBiometricTypeName } from '../utils/biometricUtils';
 import { showErrorToast } from '../utils/toastUtils';
 import MisReservasScreen from '../gymApp/screens/MisReservasScreen';
+import HistorialScreen from "../gymApp/screens/HistorialScreen";
 
 
 const Tab = createBottomTabNavigator();
@@ -260,6 +261,8 @@ export default function AppStack() {
               iconName = focused ? 'person' : 'person-outline';
             } else if (route.name === 'MisReservas') {
               iconName = focused ? 'calendar' : 'calendar-outline';
+            } else if (route.name === "Historial") {
+              iconName = focused ? "time" : "time-outline";
             }
 
             return <Ionicons name={iconName} size={size} color={color} />;
@@ -328,7 +331,23 @@ export default function AppStack() {
             ),
           }}
         />
-
+        <Tab.Screen
+          name="Historial"
+          component={HistorialScreen}
+          options={{
+            title: "Historial",
+            headerBackground: () => <HeaderGradient />,
+            headerTitle: () => (
+              <View style={styles.container}>
+                <Image
+                  source={require("../assets/ritmoLogo-removebg-preview.png")}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
+            ),
+          }}
+        />
       </Tab.Navigator>
       
       <BiometricSetupManager />
