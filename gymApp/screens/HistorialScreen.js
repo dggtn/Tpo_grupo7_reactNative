@@ -9,7 +9,8 @@ import {
   RefreshControl,
   StyleSheet,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSelector } from "react-redux";
+import { selectToken } from "../../store/slices/authSlice";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -25,23 +26,19 @@ async function safeJson(res) {
   }
 }
 
-async function authHeaders() {
-  const token = await AsyncStorage.getItem("authToken"); // mismo que en MisReservas
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 export default function HistorialScreen() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // 👉 token desde Redux (igual que en MisReservas / Checkin / DetalleCurso)
+  const token = useSelector(selectToken);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/reservations/history`, {
-        headers: {
-          ...(await authHeaders()),
-        },
-      });
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const res = await fetch(`${API_URL}/reservations/history`, { headers });
 
       const payload = await safeJson(res);
       if (!res.ok) throw new Error(payload?.message || `Error ${res.status}`);
@@ -55,17 +52,18 @@ export default function HistorialScreen() {
       setItems(lista);
     } catch (e) {
       const msg = (e?.message || "").toLowerCase();
+      // No mostrar alerta si simplemente no hay historial
       if (
         !msg.includes("no hay historial") &&
         !msg.includes("no hay asistencias")
       ) {
         Alert.alert("Historial", e.message || "No se pudo cargar el historial");
       }
-      setItems([]); // o setHistory([]), según tu state
+      setItems([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     load();
@@ -80,11 +78,11 @@ export default function HistorialScreen() {
     return (
       <View style={styles.card}>
         <Text style={styles.curso}>{nombreCurso}</Text>
-        {diaClase ? <Text style={styles.linea}>Día / Horario: {diaClase}</Text> : null}
+        {diaClase ? (
+          <Text style={styles.linea}>Día / Horario: {diaClase}</Text>
+        ) : null}
         {sede ? <Text style={styles.linea}>Sede: {sede}</Text> : null}
-        <Text style={[styles.linea, styles.estado]}>
-          Estado: {estado}
-        </Text>
+        <Text style={[styles.linea, styles.estado]}>Estado: {estado}</Text>
       </View>
     );
   };
@@ -108,7 +106,9 @@ export default function HistorialScreen() {
         </Text>
       }
       contentContainerStyle={
-        (items ?? []).length === 0 ? { flexGrow: 1, justifyContent: "center" } : null
+        (items ?? []).length === 0
+          ? { flexGrow: 1, justifyContent: "center" }
+          : null
       }
     />
   );
