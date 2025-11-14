@@ -8,6 +8,8 @@ import {
   StatusBar,
   TouchableOpacity,
 } from "react-native";
+import {  useSelector } from "react-redux";
+import { selectToken } from "../../store/slices/authSlice";
 import { useNavigation } from "@react-navigation/native";
 import CarouselComponent from "../components/Carousel";
 import Dropdown from "../components/DropdownComponent";
@@ -17,14 +19,13 @@ export default function HomeScreen() {
   const url = process.env.EXPO_PUBLIC_API_URL;
 
   const [isLoading, setLoading] = useState(true);
-  const [cursos, setCursos] = useState([]);        // siempre array
-  const [sedes, setSedes] = useState([]);          // siempre array
-  const [disciplinas, setDisciplinas] = useState([]); // siempre array
-  const [horario, setHorario] = useState(null);    // <- FIX: antes [] (truthy) mandaba inicio=[]
-
-  // filtros
+  const [cursos, setCursos] = useState([]);        
+  const [sedes, setSedes] = useState([]);          
+  const [disciplinas, setDisciplinas] = useState([]); 
+  const [horario, setHorario] = useState(null);    
   const [sedeId, setSedeId] = useState(null);
   const [disciplina, setDisciplina] = useState(null);
+  const token = useSelector(selectToken);
 
   // --- helper: parseo seguro ---
   async function safeJson(res) {
@@ -41,48 +42,65 @@ export default function HomeScreen() {
 
   const getSedes = async () => {
     try {
-      const response = await fetch(url + "/headquarters/allHeadquarters", { method: "GET" });
-      const json = await safeJson(response);
-      const lista = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
-      setSedes(lista.map((sede) => ({ label: sede.name, value: sede.id })));
+      const response = await fetch(url + "/headquarters/allHeadquarters", {
+        method: "GET",
+         headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+ 
+ 
+      const json = await response.json();
+      setSedes(json.data.map((sede) => ({ label: sede.name, value: sede.id })));
     } catch (error) {
-      console.log("ERROR getSedes:", error);
-      setSedes([]); // nunca null
+      console.log("ERROR, ", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const getDisciplina = async () => {
     try {
-      const response = await fetch(url + "/sports/allSports", { method: "GET" });
-      const json = await safeJson(response);
-      const lista = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
+      const response = await fetch(url + "/sports/allSports", {
+        method: "GET",
+         headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+ 
+ 
+      const json = await response.json();
       setDisciplinas(
-        lista.map((sport) => ({
+        json.data.map((sport) => ({
           label: sport.sportTypeName,
           value: sport.id,
         }))
       );
     } catch (error) {
-      console.log("ERROR getDisciplina:", error);
-      setDisciplinas([]); // nunca null
+      console.log("ERROR, ", error);
+    } finally {
+      setLoading(false);
     }
   };
+  //3 filtros sede,tipoDeporte,inicio .En un solo state o en 3 distintos
 
   const getCursos = async (endpoint) => {
     try {
-      setLoading(true);
-      const response = await fetch(endpoint, { method: "GET" });
-      const json = await safeJson(response);
-
-      if (!response.ok) {
-        throw new Error(json?.message || `Error ${response.status}`);
-      }
-
-      const lista = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
-      setCursos(lista); // nunca null
+      const response = await fetch(endpoint, {
+        method: "GET",
+         headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+ 
+ 
+      const json = await response.json();
+      setCursos(json.data);
     } catch (error) {
-      console.log("ERROR getCursos:", error);
-      setCursos([]); // nunca null
+      console.log("ERROR, ", error);
     } finally {
       setLoading(false);
     }
@@ -106,9 +124,7 @@ export default function HomeScreen() {
 
   // carga inicial
   useEffect(() => {
-    // pedís todo sin filtros
     getCursos(url + "/shifts");
-    // en paralelo traés combos (no toco isLoading acá para no “pisar” el spinner de cursos)
     getSedes();
     getDisciplina();
   }, []);
@@ -126,26 +142,23 @@ export default function HomeScreen() {
     setHorario(h || null); // null cuando limpies el dropdown
   };
 
-  // recarga según filtros
+
   useEffect(() => {
-    const qp = new URLSearchParams();
+    let queryParameters = new URLSearchParams();
     if (sedeId) {
       console.log("Cargando cursos para la sede ID:", sedeId);
-      qp.append("sede", sedeId);
+      queryParameters.append("sede", sedeId);
     }
     if (disciplina) {
       console.log("Cargando cursos para la disciplina ID:", disciplina);
-      qp.append("tipoDeporte", disciplina);
+      queryParameters.append("tipoDeporte", disciplina);
     }
     if (horario) {
       console.log("Cargando cursos para el horario:", horario);
-      qp.append("inicio", horario);
+      queryParameters.append("inicio", horario);
     }
-    // si hay filtros, filtrado; si no, lista completa
-    if (qp.toString() !== "") {
-      getCursos(url + "/shifts?" + qp.toString());
-    } else {
-      getCursos(url + "/shifts");
+    if (queryParameters.toString() !== "") {
+      getCursos(url + "/shifts?" + queryParameters.toString());
     }
   }, [sedeId, disciplina, horario]);
 
