@@ -20,6 +20,8 @@ import { selectJustLoggedIn } from '../store/slices/authSlice';
 import { logout } from '../store/slices/authSlice';
 import { getBiometricTypeName } from '../utils/biometricUtils';
 import { showErrorToast } from '../utils/toastUtils';
+import MisReservasScreen from '../gymApp/screens/MisReservasScreen';
+
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
@@ -256,6 +258,8 @@ export default function AppStack() {
               iconName = focused ? 'home' : 'home-outline';
             } else if (route.name === 'Perfil') {
               iconName = focused ? 'person' : 'person-outline';
+            } else if (route.name === 'MisReservas') {
+              iconName = focused ? 'calendar' : 'calendar-outline';
             }
 
             return <Ionicons name={iconName} size={size} color={color} />;
@@ -307,6 +311,24 @@ export default function AppStack() {
             ),
           }}
         />
+        <Tab.Screen
+          name="MisReservas"
+          component={MisReservasScreen}
+          options={{
+            title: 'Mis Reservas',
+            headerBackground: () => <HeaderGradient />,
+            headerTitle: () => (
+              <View style={styles.container}>
+                <Image
+                  source={require('../assets/ritmoLogo-removebg-preview.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
+            ),
+          }}
+        />
+
       </Tab.Navigator>
       
       <BiometricSetupManager />
