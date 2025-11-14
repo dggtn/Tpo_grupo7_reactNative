@@ -9,6 +9,8 @@ import {
  TouchableOpacity,
  ScrollView,
 } from "react-native";
+import {  useSelector } from "react-redux";
+import { selectToken } from "../../store/slices/authSlice";
 import { useNavigation } from "@react-navigation/native";
 import CarouselComponent from "../components/Carousel";
 import Dropdown from "../components/DropdownComponent";
@@ -23,18 +25,23 @@ export default function HomeScreen() {
  const [cursos, setCursos] = useState([]);
  const [sedes, setSedes] = useState([]);
  const [disciplinas, setDisciplinas] = useState([]);
- const [horario, setHorario] = useState([]);
+
 
 
  //estado para los filtros
  const [sedeId, setSedeId] = useState(null);
+  const [horario, setHorario] = useState(null);
  const [disciplina, setDisciplina] = useState(null);
-
+ const token = useSelector(selectToken);
 
  const getSedes = async () => {
    try {
      const response = await fetch(url + "/headquarters/allHeadquarters", {
        method: "GET",
+        headers: {
+         Authorization: `Bearer ${token}`,
+         "Content-Type": "application/json",
+       },
      });
 
 
@@ -50,6 +57,10 @@ export default function HomeScreen() {
    try {
      const response = await fetch(url + "/sports/allSports", {
        method: "GET",
+        headers: {
+         Authorization: `Bearer ${token}`,
+         "Content-Type": "application/json",
+       },
      });
 
 
@@ -73,6 +84,10 @@ export default function HomeScreen() {
    try {
      const response = await fetch(endpoint, {
        method: "GET",
+        headers: {
+         Authorization: `Bearer ${token}`,
+         "Content-Type": "application/json",
+       },
      });
 
 
