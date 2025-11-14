@@ -42,11 +42,13 @@ export default function MisReservasScreen() {
 
       if (!res.ok) throw new Error(payload?.message || `Error ${res.status}`);
 
-      const lista = Array.isArray(payload?.data)
+      let lista = Array.isArray(payload?.data)
         ? payload.data
         : Array.isArray(payload)
         ? payload
         : [];
+
+      lista = lista.filter(r => (r?.estadoReserva || "").toUpperCase() !== "ASISTIO");
 
       console.log("Reservas:", JSON.stringify(lista, null, 2));
 

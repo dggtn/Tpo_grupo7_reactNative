@@ -22,6 +22,8 @@ import { getBiometricTypeName } from '../utils/biometricUtils';
 import { showErrorToast } from '../utils/toastUtils';
 import MisReservasScreen from '../gymApp/screens/MisReservasScreen';
 import HistorialScreen from "../gymApp/screens/HistorialScreen";
+import CheckinScreen from "../gymApp/screens/CheckinScreen";
+
 
 
 const Tab = createBottomTabNavigator();
@@ -263,6 +265,8 @@ export default function AppStack() {
               iconName = focused ? 'calendar' : 'calendar-outline';
             } else if (route.name === "Historial") {
               iconName = focused ? "time" : "time-outline";
+            } else if (route.name === "Checkin") {
+              iconName = focused ? "qr-code" : "qr-code-outline";
             }
 
             return <Ionicons name={iconName} size={size} color={color} />;
@@ -331,6 +335,24 @@ export default function AppStack() {
             ),
           }}
         />
+        <Tab.Screen
+          name="Checkin"
+          component={CheckinScreen}
+          options={{
+            title: "Check-in",
+            headerBackground: () => <HeaderGradient />,
+            headerTitle: () => (
+              <View style={styles.container}>
+                <Image
+                  source={require("../assets/ritmoLogo-removebg-preview.png")}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
+            ),
+          }}
+        />
+
         <Tab.Screen
           name="Historial"
           component={HistorialScreen}
