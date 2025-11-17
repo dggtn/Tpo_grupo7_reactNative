@@ -1,17 +1,25 @@
 import { FlatList, View, Text, Dimensions, StyleSheet } from "react-native";
-const { width: windowWidth } = Dimensions.get("window");
-const ITEM_WIDTH = windowWidth * 0.8;
+import { LinearGradient } from "expo-linear-gradient";
 
 const data = [
-  { id: "1", text: "Ahora tus clases empiezan mas temprano", styles: { fontSize: 30, fontWeight: "bold", fontStyle: "italic", color: "#fff" } },
-  { id: "2", text: "PROMO 2X1", styles: { fontSize: 30, fontWeight: "bold", fontStyle: "italic", color: "#fff" } },
-  { id: "3", text: "Semana del amigo", styles: { fontSize: 30, fontWeight: "bold", fontStyle: "italic", color: "#fff" } },
+  { id: "1", text: "Ahora tus clases empiezan más temprano" },
+  { id: "2", text: "Ahora tus clases empiezan cuando quieras" },
+  { id: "3", text: "Ahora tus clases empiezan como quieras"  },
 ];
+
+const { width } = Dimensions.get("window");
 
 const Carousel = () => {
   const renderItem = ({ item }) => (
     <View style={styles.itemContainer}>
-      <Text style={item.styles} >{item.text}</Text>
+      <LinearGradient
+        colors={["#71c9efff", "#e99a84ff", "#f1dca0ff"]}
+        style={styles.gradientContainer}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Text style={styles.text}>{item.text}</Text>
+      </LinearGradient>
     </View>
   );
 
@@ -23,7 +31,6 @@ const Carousel = () => {
       horizontal
       pagingEnabled
       showsHorizontalScrollIndicator={false}
-      snapToInterval={ITEM_WIDTH}
       decelerationRate="fast"
       contentContainerStyle={styles.contentContainer}
     />
@@ -32,19 +39,33 @@ const Carousel = () => {
 
 const styles = StyleSheet.create({
   itemContainer: {
-    width: ITEM_WIDTH,
-    height: 200,
-    backgroundColor: "#7dad95ff",
-    borderRadius: 10,
+    width: 350, 
     justifyContent: "center",
-    fontWeight: "bold",
-    fontStyle: "italic",    
     alignItems: "center",
-    marginHorizontal: windowWidth * 0.05,
-    contentContainer: {
-      paddingHorizontal: windowWidth * 0.1,
-      borderRadius: 10,
-    },
+    marginHorizontal: 10,
+  },
+  gradientContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  text: {
+    fontSize: 20, 
+    fontWeight: "bold",
+    color: "#f0f8ff",
+    textAlign: "center",
+    paddingHorizontal: 10,
+    lineHeight: 22,
+  },
+  contentContainer: {
+    paddingVertical: 10,
+    height:200
   },
 });
 

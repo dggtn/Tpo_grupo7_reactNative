@@ -8,6 +8,7 @@ import {
   StatusBar,
   TouchableOpacity,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import {  useSelector } from "react-redux";
 import { selectToken } from "../../store/slices/authSlice";
 import { useNavigation } from "@react-navigation/native";
@@ -163,7 +164,9 @@ export default function HomeScreen() {
   }, [sedeId, disciplina, horario]);
 
   const Curso = ({ sede, nombreClase, horario, tipoDeporte, onPress }) => (
+    
     <TouchableOpacity style={styles.item} onPress={onPress}>
+     
       <Text style={styles.subtitle}>
         clase:<Text style={styles.title}> {nombreClase}</Text>
       </Text>
@@ -180,6 +183,12 @@ export default function HomeScreen() {
   );
 
   return (
+     <LinearGradient
+            colors={["#71c9efff", "#e99a84ff", "#f1dca0ff"]}
+            style={styles.gradientContainer}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
     <View>
       <View>
         <CarouselComponent style={styles.carousel} />
@@ -189,6 +198,7 @@ export default function HomeScreen() {
         <ActivityIndicator />
       ) : (
         <>
+        
           <View style={styles.posicionDropdown}>
             <Dropdown
               placeholder="sede"
@@ -228,12 +238,14 @@ export default function HomeScreen() {
               )}
               keyExtractor={(item, idx) => String(item?.idClase ?? idx)} // <- FIX: toString
             />
+           
           ) : (
             <Text style={styles.title}>No hay cursos disponibles con esos filtros</Text>
           )}
         </>
       )}
     </View>
+    </LinearGradient>
   );
 }
 
@@ -243,30 +255,26 @@ const styles = StyleSheet.create({
     marginTop: StatusBar.currentHeight || 0,
   },
   item: {
-    backgroundColor: "#f9c2ff",
+    borderWidth:1,
+    borderColor:"#ffebcd",
+    bordershadow:10,
     padding: 20,
     marginVertical: 8,
     marginHorizontal: 16,
     borderRadius: 10,
+    borderColor:"#ffebcd"
   },
   title: {
-    fontSize: 32,
-    borderRadius: 10,
-    marginTop: 40,
-    justifyContent: "center",
-    fontWeight: "bold",
-    fontStyle: "italic",
-    alignItems: "center",
-    color: "#b3385bff",
+  fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffebcd',
+    marginTop: 10,
   },
   subtitle: {
-    fontSize: 22,
-    borderRadius: 10,
-    justifyContent: "center",
-    fontWeight: "bold",
-    fontStyle: "italic",
-    alignItems: "center",
-    color: "#3c7090ff",
+  fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffebcd',
+    marginTop: 10,
   },
   posicionDropdown: {
     alignItems: "center",

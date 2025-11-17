@@ -4,7 +4,7 @@ import MapView, { Marker } from "react-native-maps";
 import { Button } from "react-native-paper";
 import { useSelector } from "react-redux";
 import { selectToken } from "../../store/slices/authSlice"; 
-
+import { LinearGradient } from "expo-linear-gradient";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -146,6 +146,7 @@ export default function DetalleCursoScreen({ route }) {
 
   if (isLoading) {
     return (
+      
       <View>
         <ActivityIndicator />
       </View>
@@ -154,6 +155,7 @@ export default function DetalleCursoScreen({ route }) {
 
   if (!detalleCursos) {
     return (
+      
       <View style={styles.container}>
         <Text style={styles.item}>No se encontraron datos del curso.</Text>
       </View>
@@ -161,6 +163,12 @@ export default function DetalleCursoScreen({ route }) {
   }
 
   return (
+      <LinearGradient
+                colors={["#71c9efff", "#e99a84ff", "#f1dca0ff"]}
+                style={styles.gradientContainer}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
     <View>
       <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
         <View style={styles.container}>
@@ -181,12 +189,13 @@ export default function DetalleCursoScreen({ route }) {
             <Marker coordinate={{ latitude: lat, longitude: lng }} title={sedeName} />
           </MapView>
           <View style={{ height: 16 }} />
-          <Button mode="contained" onPress={reservar} loading={isBooking} style={{ marginBottom: 24 }}>
+          <Button style={styles.btn} mode="contained" onPress={reservar} loading={isBooking} style={{ marginBottom: 24}}>
             Reservar
           </Button>
         </View>
       </ScrollView>
     </View>
+    </LinearGradient>
   );
 }
 
@@ -198,11 +207,10 @@ const styles = StyleSheet.create({
     marginLeft: 20,
   },
   item: {
-    fontSize: 25,
-    borderRadius: 10,
-    fontWeight: "bold",
-    fontStyle: "italic",
-    color: "#0e6c5eff",
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffebcd',
+    marginTop: 10,
   },
   btn:{
     marginTop:10,
