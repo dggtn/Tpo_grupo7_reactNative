@@ -34,8 +34,14 @@ import {
 } from "../../utils/biometricStorageUtils";
 import { Button } from "react-native-paper";
 
+import React, { useState } from "react";
+import { View, Text, Image, TouchableOpacity, 
+    StyleSheet, Alert } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+
 
 const PerfilScreen = () => {
+
  const dispatch = useDispatch();
  const token = useSelector(selectToken);
  const userEmail = useSelector(selectUserEmail);
@@ -56,7 +62,27 @@ const PerfilScreen = () => {
  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
  const [passwordForBiometric, setPasswordForBiometric] = useState("");
  const [biometricTypeName, setBiometricTypeName] = useState("Huella Digital");
+    const [file, setFile] = useState(null);
+    const [error, setError] = useState(null);
+    const pickImage = async () => {
+        const { status } = await ImagePicker.
+            requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+            Alert.alert(
+                "Permission Denied",
+                `Sorry, we need camera 
+                 roll permission to upload images.`
+            );
+        } else {
 
+            const result =
+                await ImagePicker.launchImageLibraryAsync();
+            if (!result.cancelled) {
+                setFile(result.uri);
+                setError(null);
+            }
+        }
+    };
 
  useEffect(() => {
    initializeScreen();
@@ -142,6 +168,8 @@ const PerfilScreen = () => {
      setLoading(false);
    }
  };
+
+ 
 
 
  const handleLogout = () => {
@@ -300,6 +328,30 @@ const PerfilScreen = () => {
              style={styles.avatar}
            />
          </View>
+  <View style={styles.container}>
+            <Text style={styles.header}>
+                Agregar foto de perfil:
+            </Text>
+
+            <TouchableOpacity style={styles.button}
+                onPress={pickImage}>
+                <Text style={styles.buttonText}>
+                    Elegir imagen:
+                </Text>
+            </TouchableOpacity>
+
+          
+            {file ? (
+              
+                <View style={styles.imageContainer}>
+                    <Image source={{ uri: file }}
+                        style={styles.image} />
+                </View>
+            ) : (
+               
+                <Text style={styles.errorText}>{error}</Text>
+            )}
+        </View>
          <View style={styles.infoContainer}>
            <Text style={styles.subtitle}>Perfil</Text>
            <TextInput
@@ -556,10 +608,6 @@ export default PerfilScreen;
 
 
 const styles = StyleSheet.create({
- container: {
-   flex: 1,
-   backgroundColor: "#b35cbdff"
- },
  scrollContent: {
     flexGrow: 1,
     padding: 20,
@@ -818,4 +866,52 @@ const styles = StyleSheet.create({
    color: "#F57C00",
    lineHeight: 16,
  },
+ 
+
+    container: {
+        flex: 1,
+        backgroundColor: "#b35cbdff"
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 16,
+    },
+    header: {
+        fontSize: 20,
+        marginBottom: 16,
+    },
+    button: {
+        backgroundColor: "#007AFF",
+        padding: 10,
+        borderRadius: 8,
+        marginBottom: 16,
+        shadowColor: "#000000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    buttonText: {
+        color: "#FFFFFF",
+        fontSize: 16,
+        fontWeight: "bold",
+    },
+    imageContainer: {
+        borderRadius: 8,
+        marginBottom: 16,
+        shadowColor: "#000000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    image: {
+        width: 200,
+        height: 200,
+        borderRadius: 8,
+    },
+    errorText: {
+        color: "red",
+        marginTop: 16,
+    },
 });
+
