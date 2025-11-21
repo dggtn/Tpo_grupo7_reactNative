@@ -296,16 +296,13 @@ const PerfilScreen = () => {
 
   return (
     <View>
-
-    
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.container}>
           <View style={styles.infoContainer}>
-            <Text style={styles.subtitle}>Perfil</Text>
+            <Text style={styles.subtitle}>MI PERFIL:</Text>
             {file ? (
               <View style={styles.imageContainer}>
                 <Image
@@ -316,12 +313,14 @@ const PerfilScreen = () => {
             ) : (
               <Text style={styles.errorText}>{error}</Text>
             )}
-          </View>
-          <Text style={styles.header}>Agregar foto de perfil:</Text>
+         
+          <Text style={styles.header}>Agrega o edita tu foto:</Text>
 
           <TouchableOpacity style={styles.button} onPress={pickImage}>
             <Text style={styles.buttonText}>Elegir imagen:</Text>
           </TouchableOpacity>
+           
+
           <TextInput
             style={styles.input}
             onChangeText={onChangeText}
@@ -340,12 +339,13 @@ const PerfilScreen = () => {
             editable={false}
           />
           <Button
-            style={styles.btnGuardar}
+            style={styles.button}
             mode="contained"
             onPress={putUsuario}
           >
             Guardar cambios
           </Button>
+          </View>
         </View>
 
         {/* SECCIÓN DE BIOMETRÍA MEJORADA */}
@@ -569,6 +569,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
     justifyContent: "center",
+    backgroundColor:"linear-gradient(120deg, rgba(255, 156, 117, 1) 0%, rgba(163, 235, 226, 1) 100%);",
   },
   title: {
     fontSize: 32,
@@ -596,7 +597,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     color: "#fff",
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "linear-gradient(120deg, rgba(255, 156, 117, 1) 0%, rgba(163, 235, 226, 1) 100%)",
     fontSize: 15,
     fontWeight: "bold",
     fontStyle: "italic",
@@ -613,7 +614,7 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   infoContainer: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "linear-gradient(120deg, rgba(255, 156, 117, 1) 0%, rgba(163, 235, 226, 1) 100%);",
     borderRadius: 12,
     padding: 20,
   },
@@ -650,9 +651,6 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   btnGuardar: {
-    padding: 10,
-    marginBottom: 10,
-    marginEnd: 10,
     backgroundColor: "#74C1E6",
   },
   enableBiometricButton: {
@@ -826,14 +824,17 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: "#b35cbdff",
+    backgroundColor: "linear-gradient(120deg, rgba(255, 156, 117, 1) 0%, rgba(163, 235, 226, 1) 100%);",
     justifyContent: "center",
     alignItems: "center",
     padding: 16,
   },
   header: {
-    fontSize: 20,
-    marginBottom: 16,
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 4,
+    margin:"center"
   },
   button: {
     backgroundColor: "#007AFF",
@@ -845,6 +846,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 5,
+    margin:"center"
   },
   buttonText: {
     color: "#FFFFFF",
@@ -853,7 +855,6 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     borderRadius: 8,
-    marginBottom: 16,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
