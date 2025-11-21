@@ -16,13 +16,16 @@ import CarouselComponent from "../components/Carousel";
 import Dropdown from "../components/DropdownComponent";
 
 export default function HomeScreen() {
+
+  const opcionTodos = {value: -1, label: 'TODOS'}
+
   const navigation = useNavigation();
   const url = process.env.EXPO_PUBLIC_API_URL;
 
   const [isLoading, setLoading] = useState(true);
   const [cursos, setCursos] = useState([]);        
-  const [sedes, setSedes] = useState([]);          
-  const [disciplinas, setDisciplinas] = useState([]); 
+  const [sedes, setSedes] = useState([opcionTodos]);          
+  const [disciplinas, setDisciplinas] = useState([opcionTodos]); 
   const [horario, setHorario] = useState(null);    
   const [sedeId, setSedeId] = useState(null);
   const [disciplina, setDisciplina] = useState(null);
@@ -53,7 +56,9 @@ export default function HomeScreen() {
  
  
       const json = await response.json();
-      setSedes(json.data.map((sede) => ({ label: sede.name, value: sede.id })));
+
+      const sedesObtenidas = json.data.map((sede) => ({ label: sede.name, value: sede.id }))
+      setSedes((original) => [...original, ...sedesObtenidas])
     } catch (error) {
       console.log("ERROR, ", error);
     } finally {
@@ -73,12 +78,11 @@ export default function HomeScreen() {
  
  
       const json = await response.json();
-      setDisciplinas(
-        json.data.map((sport) => ({
-          label: sport.sportTypeName,
-          value: sport.id,
-        }))
-      );
+
+
+      const disciplinasObtenidas = json.data.map((disciplina) => ({ label: disciplina.sportTypeName, value: disciplina.id }))
+      setDisciplinas((original) => [...original, ...disciplinasObtenidas])
+
     } catch (error) {
       console.log("ERROR, ", error);
     } finally {
@@ -108,6 +112,7 @@ export default function HomeScreen() {
   };
 
   const horarios = [
+    { label: "TODOS", value: "-1" },
     { label: "8:00", value: "08:00" },
     { label: "9:00", value: "09:00" },
     { label: "10:00", value: "10:00" },
@@ -146,15 +151,15 @@ export default function HomeScreen() {
 
   useEffect(() => {
     let queryParameters = new URLSearchParams();
-    if (sedeId) {
+    if (sedeId && sedeId != -1) {
       console.log("Cargando cursos para la sede ID:", sedeId);
       queryParameters.append("sede", sedeId);
     }
-    if (disciplina) {
+    if (disciplina && disciplina != -1) {
       console.log("Cargando cursos para la disciplina ID:", disciplina);
       queryParameters.append("tipoDeporte", disciplina);
     }
-    if (horario) {
+    if (horario && horario != -1) {
       console.log("Cargando cursos para el horario:", horario);
       queryParameters.append("inicio", horario);
     }
