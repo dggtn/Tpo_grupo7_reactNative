@@ -62,3 +62,6 @@ coverage/
 *.swo
 *~
 .tmp/
+
+# Android
+.android/
