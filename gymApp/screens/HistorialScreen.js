@@ -1,5 +1,5 @@
 // gymApp/screens/HistorialScreen.js
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,14 @@ import {
   Alert,
   RefreshControl,
   StyleSheet,
+  Modal,
+  Pressable,
 } from "react-native";
 import { useSelector } from "react-redux";
 import { selectToken } from "../../store/slices/authSlice";
+import { Button } from "react-native-paper";
+import StarRating from 'react-native-star-rating-widget';
+import { showSuccessToast, } from "../../utils/toastUtils";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -29,6 +34,9 @@ async function safeJson(res) {
 export default function HistorialScreen() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false)
+  const [rating, setRating] = useState(0)
+  const [selectedCourse, setSelectedCourse] = useState({})
 
   // 👉 token desde Redux (igual que en MisReservas / Checkin / DetalleCurso)
   const token = useSelector(selectToken);
@@ -67,13 +75,43 @@ export default function HistorialScreen() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, []);
+
+  const openModal = (course) => {
+    setSelectedCourse(course)
+    setModalOpen(true)
+  }
+
+  const calificarCurso = async () => {
+
+    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', }
+    const endpoint = `${API_URL}/shifts/${selectedCourse.shiftId}/rating`
+    const body = {
+      rating: rating,
+      comment: ''
+    }
+
+    fetch(endpoint, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(body)
+    })
+    .then(response => response.json())
+    .then(rta => {
+      const item = items.find(item => item.shiftId == selectedCourse.shiftId)
+      item.rating = rta.data
+      setItems((lista) => lista.map(i => i.shiftId === item.shiftId ? item : i));
+      showSuccessToast('Calificación exitosa', 'Gracias por compartir tu opinión')
+    })
+  }
 
   const renderItem = ({ item }) => {
+    console.log(item)
     const nombreCurso = item?.nombreCurso ?? "Curso";
     const estado = item?.estadoReserva ?? "N/D";
     const diaClase = item?.diaClase ?? null;
     const sede = item?.sede ?? null;
+    const calificado = !!item?.rating
 
     return (
       <View style={styles.card}>
@@ -83,6 +121,8 @@ export default function HistorialScreen() {
         ) : null}
         {sede ? <Text style={styles.linea}>Sede: {sede}</Text> : null}
         <Text style={[styles.linea, styles.estado]}>Estado: {estado}</Text>
+        {calificado && <Text style={[styles.linea, styles.estado]}>Tu calificación: {item.rating.valor}</Text> }
+        {!calificado && <Button onPress={() => openModal(item)}>Calificar</Button>}
       </View>
     );
   };
@@ -92,25 +132,53 @@ export default function HistorialScreen() {
   }
 
   return (
-    <FlatList
-      style={{ flex: 1 }}
-      data={items ?? []}
-      keyExtractor={(it, idx) => String(it?.reservationId ?? idx)}
-      renderItem={renderItem}
-      refreshControl={
-        <RefreshControl refreshing={loading} onRefresh={load} />
-      }
-      ListEmptyComponent={
-        <Text style={styles.emptyText}>
-          Todavía no tenés historial de asistencias.
-        </Text>
-      }
-      contentContainerStyle={
-        (items ?? []).length === 0
-          ? { flexGrow: 1, justifyContent: "center" }
-          : null
-      }
-    />
+    <View style={{ flex: 1 }}>
+      <FlatList        
+        data={items ?? []}
+        keyExtractor={(it, idx) => String(it?.reservationId ?? idx)}
+        renderItem={renderItem}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={load} />
+        }
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>
+            Todavía no tenés historial de asistencias.
+          </Text>
+        }
+        contentContainerStyle={
+          (items ?? []).length === 0
+            ? { flexGrow: 1, justifyContent: "center" }
+            : null
+        }
+      />
+      <Modal
+        transparent={true}
+        visible={modalOpen}>
+          <View style={styles.centered}>
+              <View style={styles.modalView}>
+                <Text>¿Que te pareció la clase {selectedCourse.nombreCurso}?</Text>
+                <StarRating 
+                  rating={rating} 
+                  onChange={(rating) => {setRating(rating)}}
+                  step="full"/>
+                <Pressable
+                  style={[styles.button, styles.buttonClose]}
+                  onPress={() => setModalOpen(!modalOpen)}>
+                   <Text style={styles.textStyle}>Cerrar</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.button, styles.buttonClose]}
+                  onPress={() => {
+                    calificarCurso()
+                    setModalOpen(!modalOpen)
+                    }}>
+                   <Text style={styles.textStyle}>Calificar</Text>
+                </Pressable>
+              </View>
+          </View>
+      </Modal>
+
+    </View>
   );
 }
 
@@ -143,5 +211,33 @@ const styles = StyleSheet.create({
     marginTop: 24,
     fontSize: 16,
     color: "#666",
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  button: {
+    borderRadius: 20,
+    padding: 10,
+    elevation: 2,
+  },
+  buttonClose: {
+    backgroundColor: '#2196F3',
   },
 });
