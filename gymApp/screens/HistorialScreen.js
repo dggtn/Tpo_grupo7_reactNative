@@ -1,4 +1,3 @@
-// gymApp/screens/HistorialScreen.js
 import { useEffect, useState, useCallback } from "react";
 import {
   View,
