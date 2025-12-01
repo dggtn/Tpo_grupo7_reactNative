@@ -10,6 +10,13 @@ import HomeScreen from '../gymApp/screens/HomeScreen';
 import PerfilScreen from '../gymApp/screens/PerfilScreen';
 import DetalleCursoScreen from '../gymApp/screens/DetalleCursoScreen';
 import BiometricSetupManager from '../gymApp/components/BiometricSetupManager';
+import MisReservasScreen from '../gymApp/screens/MisReservasScreen';
+import HistorialScreen from "../gymApp/screens/HistorialScreen";
+import CheckinScreen from "../gymApp/screens/CheckinScreen";
+
+//Importar pantalla de configuración de notificaciones
+import NotificationSettingsScreen from '../gymApp/screens/NotificationSettingsScreen';
+
 import { 
   selectBiometricEnabled,
   authenticateWithBiometric,
@@ -20,11 +27,6 @@ import { selectJustLoggedIn } from '../store/slices/authSlice';
 import { logout } from '../store/slices/authSlice';
 import { getBiometricTypeName } from '../utils/biometricUtils';
 import { showErrorToast } from '../utils/toastUtils';
-import MisReservasScreen from '../gymApp/screens/MisReservasScreen';
-import HistorialScreen from "../gymApp/screens/HistorialScreen";
-import CheckinScreen from "../gymApp/screens/CheckinScreen";
-
-
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
@@ -267,6 +269,8 @@ export default function AppStack() {
               iconName = focused ? "time" : "time-outline";
             } else if (route.name === "Checkin") {
               iconName = focused ? "qr-code" : "qr-code-outline";
+            } else if (route.name === "Notificaciones") {
+              iconName = focused ? "notifications" : "notifications-outline";
             }
 
             return <Ionicons name={iconName} size={size} color={color} />;
@@ -275,19 +279,17 @@ export default function AppStack() {
           tabBarInactiveTintColor: 'gray',
         })}
       >
-        {/* AHORA Home es un Stack que incluye DetalleCurso */}
         <Tab.Screen 
           name="Home" 
           component={HomeStackScreen}
           options={({ route }) => {
-            // Usar getFocusedRouteNameFromRoute para obtener la ruta activa
             const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeMain';
             
             console.log('[AppStack Tab] Ruta enfocada:', routeName);
             
             return {
               title: 'Ritmo Fit',
-              headerShown: routeName !== 'DetalleCurso', // Ocultar SOLO en DetalleCurso
+              headerShown: routeName !== 'DetalleCurso',
               headerBackground: () => <HeaderGradient />,
               headerTitle: () => (
                 <View style={styles.container}>
@@ -358,6 +360,25 @@ export default function AppStack() {
           component={HistorialScreen}
           options={{
             title: "Historial",
+            headerBackground: () => <HeaderGradient />,
+            headerTitle: () => (
+              <View style={styles.container}>
+                <Image
+                  source={require("../assets/ritmoLogo-removebg-preview.png")}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
+            ),
+          }}
+        />
+        
+        {/* ✅ NUEVO: Tab de Configuración de Notificaciones */}
+        <Tab.Screen
+          name="Notificaciones"
+          component={NotificationSettingsScreen}
+          options={{
+            title: "Notificaciones",
             headerBackground: () => <HeaderGradient />,
             headerTitle: () => (
               <View style={styles.container}>

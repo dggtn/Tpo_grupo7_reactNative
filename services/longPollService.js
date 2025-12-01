@@ -1,171 +1,340 @@
-// Servicio auxiliar (puede usarse desde pantallas y desde la tarea background) para:
-// - gestionar lastTimestamp
-// - fetch de events (long-poll)
-// - programar/cancelar recordatorios locales 1h antes de clase
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
-import { API_BASE_URL } from '../config/constants';
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080';
 const POLL_KEY_LAST = '@lp:lastTimestamp';
-const BACKEND_URL = (process.env.BACKEND_URL || API_BASE_URL).replace(/\/$/, '');
-// mapeo en storage para notifs programadas: JSON { [classId]: notificationId }
-const SCHEDULED_NOTIFS_KEY = '@lp:scheduledNotifs';
-
-// util: leer storage mapeo notifs
-async function _readScheduledMap() {
-  const s = await AsyncStorage.getItem(SCHEDULED_NOTIFS_KEY);
-  return s ? JSON.parse(s) : {};
-}
-async function _writeScheduledMap(m) {
-  await AsyncStorage.setItem(SCHEDULED_NOTIFS_KEY, JSON.stringify(m));
-}
-
-export async function fetchLongPollEvents(userId, timeoutMs = 35000) {
-  const sinceStr = await AsyncStorage.getItem(POLL_KEY_LAST);
-  const since = sinceStr ? Number(sinceStr) : 0;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(
-      `${BACKEND_URL}/api/longpoll/events?userId=${encodeURIComponent(userId)}&since=${since}`,
-      {
-        method: 'GET',
-        signal: controller.signal,
-        headers: { Accept: 'application/json' },
-      }
-    );
-    clearTimeout(timeout);
-    if (!res.ok) return [];
-    const events = await res.json();
-    if (events.length) {
-      const maxTs = events.reduce((m, e) => Math.max(m, e.createdAt || 0), since);
-      await AsyncStorage.setItem(POLL_KEY_LAST, String(maxTs));
-    }
-    return events;
-  } catch (e) {
-    clearTimeout(timeout);
-    return [];
-  }
-}
-
-export async function setLastTimestamp(ts) {
-  await AsyncStorage.setItem(POLL_KEY_LAST, String(ts));
-}
-export async function getLastTimestamp() {
-  const s = await AsyncStorage.getItem(POLL_KEY_LAST);
-  return s ? Number(s) : 0;
-}
+const NOTIFICATION_ID_PREFIX = '@notif:class:';
 
 /**
- * scheduleClassReminder
- * - classId: identificador de la clase (único por inscripción)
- * - classStartISO: ISO string o timestamp en ms (fecha/hora de inicio de la clase)
- * - title / body: texto opcional
- *
- * Computa recordatorio 1 hora antes; si esa hora ya pasó, dispara notificación inmediata.
- * Guarda el notificationId en AsyncStorage para poder cancelarlo luego.
+ * Obtiene el token de autorización del storage
  */
-export async function scheduleClassReminder(classId, classStartISO, title, body) {
+async function getAuthToken() {
   try {
-    const startTs = typeof classStartISO === 'string' ? Date.parse(classStartISO) : Number(classStartISO);
-    if (!startTs || Number.isNaN(startTs)) {
-      console.warn('scheduleClassReminder: start time inválido', classStartISO);
-      return null;
-    }
-    const reminderTs = startTs - 60 * 60 * 1000; // 1 hora antes
-    const now = Date.now();
-
-    // cancelar notificación previa si existía (evitamos duplicados)
-    await cancelScheduledNotificationForClass(classId);
-
-    if (reminderTs <= now) {
-      // Ya pasó la hora del recordatorio: enviar inmediata
-      const nid = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: title || 'Recordatorio: clase en menos de 1 hora',
-          body: body || 'Tu clase está empezando pronto.',
-          data: { classId, scheduledFor: reminderTs },
-        },
-        trigger: null,
-      });
-      // No la guardamos como programada futura (porque ya se disparó), pero por coherencia la guardamos para permitir cancelaciones posteriores
-      const map = await _readScheduledMap();
-      map[classId] = nid;
-      await _writeScheduledMap(map);
-      return nid;
-    } else {
-      let trigger;
-      if (Platform.OS === 'android') {
-        // trigger con timestamp en segundos en expo -> Date
-        trigger = new Date(reminderTs);
-      } else {
-        trigger = new Date(reminderTs);
-      }
-      const nid = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: title || 'Recordatorio: clase dentro de 1 hora',
-          body: body || 'Tu clase empezará en una hora.',
-          data: { classId, scheduledFor: reminderTs },
-        },
-        trigger,
-      });
-      const map = await _readScheduledMap();
-      map[classId] = nid;
-      await _writeScheduledMap(map);
-      return nid;
-    }
-  } catch (e) {
-    console.warn('Error scheduleClassReminder', e);
+    const token = await AsyncStorage.getItem('persist:auth');
+    if (!token) return null;
+    
+    const authData = JSON.parse(token);
+    const tokenValue = authData.token ? JSON.parse(authData.token) : null;
+    
+    console.log('[LongPoll] Token encontrado:', !!tokenValue);
+    return tokenValue;
+  } catch (error) {
+    console.error('[LongPoll] Error obteniendo token:', error);
     return null;
   }
 }
 
 /**
- * cancelScheduledNotificationForClass
- * - borra la notificación programada asociada al classId y la remueve del map
+ * Realiza long polling al endpoint del backend
+ * @param {string} userId - ID del usuario (opcional, el backend usa el token)
+ * @param {number} timeout - Timeout en ms (por defecto 30s)
+ * @returns {Array} Lista de eventos pendientes
  */
-export async function cancelScheduledNotificationForClass(classId) {
+export async function fetchLongPollEvents(userId = null, timeout = 30000) {
   try {
-    const map = await _readScheduledMap();
-    const nid = map[classId];
-    if (nid) {
-      try {
-        await Notifications.cancelScheduledNotificationAsync(nid);
-      } catch (e) {
-        // puede fallar si ya se disparó o si el id es inválido -> no rompa el flow
-        console.warn('cancelScheduledNotificationForClass: error cancelando', e);
-      }
-      delete map[classId];
-      await _writeScheduledMap(map);
-      return true;
+    const token = await getAuthToken();
+    
+    if (!token) {
+      console.log('[LongPoll] No hay token, omitiendo polling');
+      return [];
     }
-    return false;
-  } catch (e) {
-    console.warn('cancelScheduledNotificationForClass err', e);
-    return false;
+
+    console.log('[LongPoll] Iniciando polling...');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    const response = await fetch(`${API_URL}/notifications/poll`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      console.error('[LongPoll] Error del servidor:', response.status, errorText);
+      return [];
+    }
+
+    const result = await response.json();
+    
+    // El backend devuelve { success: true, data: [...eventos], error: null }
+    if (result.success && Array.isArray(result.data)) {
+      const events = result.data;
+      console.log('[LongPoll] Eventos recibidos:', events.length);
+      
+      if (events.length > 0) {
+        await AsyncStorage.setItem(POLL_KEY_LAST, new Date().toISOString());
+      }
+      
+      return events;
+    }
+
+    return [];
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('[LongPoll] Timeout alcanzado (esperado)');
+    } else {
+      console.error('[LongPoll] Error en polling:', error.message);
+    }
+    return [];
   }
 }
 
 /**
- * cancelAllScheduledNotificationsManagedByApp
- * - útil en casos de logout para limpiar storage
+ * Programa una notificación local para recordatorio de clase (1h antes)
+ * @param {number} classId - ID de la clase/shift
+ * @param {string} classStartAt - ISO timestamp de inicio de clase
+ * @param {string} title - Título de la notificación
+ * @param {string} body - Cuerpo de la notificación
  */
-export async function cancelAllScheduledNotificationsManagedByApp() {
+export async function scheduleClassReminder(classId, classStartAt, title, body) {
   try {
-    const map = await _readScheduledMap();
-    const ids = Object.values(map);
-    for (const nid of ids) {
-      try {
-        await Notifications.cancelScheduledNotificationAsync(nid);
-      } catch (e) {
-        // ignore
-      }
+    const startDate = new Date(classStartAt);
+    const reminderDate = new Date(startDate.getTime() - 60 * 60 * 1000); // 1h antes
+    const now = new Date();
+
+    // Solo programar si el recordatorio es futuro
+    if (reminderDate <= now) {
+      console.log('[LongPoll] Recordatorio en el pasado, omitiendo:', classId);
+      return;
     }
-    await _writeScheduledMap({});
-    return true;
-  } catch (e) {
-    console.warn('cancelAll.. err', e);
-    return false;
+
+    // Cancelar notificación previa de esta clase (si existe)
+    await cancelScheduledNotificationForClass(classId);
+
+    // Guardar el ID de la notificación para poder cancelarla después
+    const notificationId = `class_${classId}`;
+    
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: title || '¡Clase en 1 hora!',
+        body: body || 'No olvides asistir a tu clase',
+        data: { classId, type: 'CLASS_REMINDER' },
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: {
+        date: reminderDate,
+      },
+      identifier: notificationId,
+    });
+
+    // Guardar referencia en AsyncStorage
+    await AsyncStorage.setItem(
+      `${NOTIFICATION_ID_PREFIX}${classId}`,
+      notificationId
+    );
+
+    console.log('[LongPoll] Recordatorio programado para:', reminderDate.toISOString(), 'classId:', classId);
+  } catch (error) {
+    console.error('[LongPoll] Error programando recordatorio:', error);
+  }
+}
+
+/**
+ * Cancela la notificación programada de una clase específica
+ * @param {number} classId - ID de la clase/shift
+ */
+export async function cancelScheduledNotificationForClass(classId) {
+  try {
+    const notificationId = await AsyncStorage.getItem(
+      `${NOTIFICATION_ID_PREFIX}${classId}`
+    );
+
+    if (notificationId) {
+      await Notifications.cancelScheduledNotificationAsync(notificationId);
+      await AsyncStorage.removeItem(`${NOTIFICATION_ID_PREFIX}${classId}`);
+      console.log('[LongPoll] Notificación cancelada para clase:', classId);
+    }
+  } catch (error) {
+    console.error('[LongPoll] Error cancelando notificación:', error);
+  }
+}
+
+/**
+ * Cancela todas las notificaciones programadas
+ */
+export async function cancelAllScheduledNotifications() {
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    
+    // Limpiar referencias en AsyncStorage
+    const keys = await AsyncStorage.getAllKeys();
+    const notificationKeys = keys.filter(key => key.startsWith(NOTIFICATION_ID_PREFIX));
+    
+    if (notificationKeys.length > 0) {
+      await AsyncStorage.multiRemove(notificationKeys);
+    }
+    
+    console.log('[LongPoll] Todas las notificaciones canceladas');
+  } catch (error) {
+    console.error('[LongPoll] Error cancelando todas las notificaciones:', error);
+  }
+}
+
+/**
+ * Marca eventos como leídos en el backend
+ * @param {Array<number>} eventIds - Array de IDs de eventos
+ */
+export async function markEventsAsRead(eventIds) {
+  try {
+    if (!eventIds || eventIds.length === 0) return;
+
+    const token = await getAuthToken();
+    if (!token) return;
+
+    const response = await fetch(`${API_URL}/notifications/mark-read`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ eventIds }),
+    });
+
+    if (response.ok) {
+      console.log('[LongPoll] Eventos marcados como leídos:', eventIds.length);
+    }
+  } catch (error) {
+    console.error('[LongPoll] Error marcando eventos como leídos:', error);
+  }
+}
+
+/**
+ * Obtiene el contador de notificaciones no leídas
+ * @returns {Promise<number>}
+ */
+export async function getUnreadCount() {
+  try {
+    const token = await getAuthToken();
+    if (!token) return 0;
+
+    const response = await fetch(`${API_URL}/notifications/unread-count`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) return 0;
+
+    const result = await response.json();
+    return result.success ? (result.data || 0) : 0;
+  } catch (error) {
+    console.error('[LongPoll] Error obteniendo contador:', error);
+    return 0;
+  }
+}
+
+/**
+ * Procesa un evento del backend y muestra notificación local si corresponde
+ * @param {Object} event - Evento del backend
+ */
+export async function processEvent(event) {
+  try {
+    const settings = await Notifications.getPermissionsAsync();
+    const notifGranted = settings.granted || settings.status === 'granted';
+
+    if (!notifGranted) {
+      console.log('[LongPoll] Sin permisos de notificación, omitiendo evento');
+      return;
+    }
+
+    const { eventType, title, message, relatedShiftId, relatedCourseId, metadata } = event;
+    let parsedMetadata = {};
+    
+    try {
+      parsedMetadata = metadata ? JSON.parse(metadata) : {};
+    } catch (e) {
+      console.warn('[LongPoll] Error parseando metadata:', e);
+    }
+
+    console.log('[LongPoll] Procesando evento:', eventType);
+
+    switch (eventType) {
+      case 'CLASS_REMINDER':
+        // Ya programado previamente, no hacer nada
+        break;
+
+      case 'ENROLLMENT_CONFIRMED':
+      case 'RESERVATION_CONFIRMED':
+        // Programar recordatorio si hay classStartAt en metadata
+        if (parsedMetadata.classTime && relatedShiftId) {
+          await scheduleClassReminder(
+            relatedShiftId,
+            parsedMetadata.classTime,
+            title,
+            message
+          );
+        }
+        // Mostrar notificación inmediata también
+        await showImmediateNotification(title, message, event);
+        break;
+
+      case 'CLASS_CANCELLED':
+        // Cancelar recordatorio programado
+        if (relatedShiftId) {
+          await cancelScheduledNotificationForClass(relatedShiftId);
+        }
+        await showImmediateNotification(title, message, event);
+        break;
+
+      case 'CLASS_RESCHEDULED':
+        // Cancelar y reprogramar
+        if (relatedShiftId) {
+          await cancelScheduledNotificationForClass(relatedShiftId);
+          if (parsedMetadata.classTime) {
+            await scheduleClassReminder(
+              relatedShiftId,
+              parsedMetadata.classTime,
+              'Clase reprogramada - recordatorio',
+              message
+            );
+          }
+        }
+        await showImmediateNotification(title, message, event);
+        break;
+
+      case 'RESERVATION_EXPIRING':
+      case 'RESERVATION_EXPIRED':
+      case 'ENROLLMENT_CANCELLED':
+        await showImmediateNotification(title, message, event);
+        break;
+
+      default:
+        // Evento genérico
+        await showImmediateNotification(title || 'Notificación', message, event);
+    }
+
+  } catch (error) {
+    console.error('[LongPoll] Error procesando evento:', error);
+  }
+}
+
+/**
+ * Muestra una notificación inmediata
+ */
+async function showImmediateNotification(title, body, data) {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        data,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+        vibrate: [0, 250, 250, 250],
+      },
+      trigger: null, // Inmediato
+    });
+    console.log('[LongPoll] Notificación inmediata mostrada');
+  } catch (error) {
+    console.error('[LongPoll] Error mostrando notificación:', error);
   }
 }
