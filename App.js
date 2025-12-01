@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { fetchLongPollEvents, scheduleClassReminder, cancelScheduledNotificationForClass } from './services/longPollService';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import {
@@ -50,68 +51,65 @@ TaskManager.defineTask(TASK_NAME, async () => {
       return BackgroundFetch.BackgroundFetchResult.NoData;
     }
 
-    const sinceStr = await AsyncStorage.getItem(POLL_KEY_LAST);
-    const since = sinceStr ? Number(sinceStr) : 0;
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 35000); // 35s
-    let res;
-    try {
-      res = await fetch(
-        `${BACKEND_URL.replace(/\/$/, '')}/api/longpoll/events?userId=${encodeURIComponent(
-          userId
-        )}&since=${since}`,
-        {
-          method: 'GET',
-          signal: controller.signal,
-          headers: { Accept: 'application/json' },
-        }
-      );
-    } catch (e) {
-      clearTimeout(timeout);
-      return BackgroundFetch.BackgroundFetchResult.Failed;
-    }
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      return BackgroundFetch.BackgroundFetchResult.Failed;
-    }
-
-    const events = await res.json();
-    if (Array.isArray(events) && events.length > 0) {
-      // actualizar timestamp al máximo de events para la próxima consulta
-      const maxTs = events.reduce((m, e) => Math.max(m, e.createdAt || 0), since);
-      await AsyncStorage.setItem(POLL_KEY_LAST, String(maxTs));
-
-      // enviar notificaciones locales
-      for (const ev of events) {
-        let title = 'Novedad de clase';
-        let body = ev.message || 'Cambio en tu inscripción';
-        if (ev.type === 'REMINDER') {
-          title = 'Recordatorio: clase en 1 hora';
-        } else if (ev.type === 'RESCHEDULE') {
-          title = 'Clase reprogramada';
-        } else if (ev.type === 'CANCEL') {
-          title = 'Clase cancelada';
-        }
-        try {
-          await Notifications.scheduleNotificationAsync({
-            content: { title, body, data: ev },
-            trigger: null, // inmediata
-          });
-        } catch (notifErr) {
-          // No queremos que un fallo en notificaciones rompa todo
-          console.log('Error scheduling notification', notifErr);
-        }
-      }
-      return BackgroundFetch.BackgroundFetchResult.NewData;
-    } else {
+    // obtener events usando la utilidad (la cual actualiza lastTimestamp)
+    const events = await fetchLongPollEvents(userId, 35000);
+    if (!Array.isArray(events) || events.length === 0) {
       return BackgroundFetch.BackgroundFetchResult.NoData;
     }
+
+    // procesar events
+    for (const ev of events) {
+      // Evitar que intentemos programar si el usuario no dio permisos
+      const settings = await Notifications.getPermissionsAsync();
+      const notifGranted = settings.granted || settings.status === 'granted';
+
+      // suponer payload de backend con: { type, message, classId, classStartAt /*ISO*/ }
+      if (ev.type === 'ENROLLED' || ev.type === 'NEW_CLASS' || ev.type === 'CLASS_ASSIGNED') {
+        // programar recordatorio 1h antes si se dio permiso, sino guardar nada (backend seguirá mandando events)
+        if (notifGranted && ev.classId && ev.classStartAt) {
+          await scheduleClassReminder(ev.classId, ev.classStartAt, 'Recordatorio: clase en 1 hora', ev.message || '');
+        }
+      } else if (ev.type === 'RESCHEDULE') {
+        // cancelar previo y reprogramar con la nueva hora
+        if (ev.classId) {
+          await cancelScheduledNotificationForClass(ev.classId);
+          if (notifGranted && ev.classStartAt) {
+            await scheduleClassReminder(ev.classId, ev.classStartAt, 'Clase reprogramada - recordatorio 1h', ev.message || '');
+          }
+        }
+        // además notificar inmediatamente del cambio
+        try {
+          await Notifications.scheduleNotificationAsync({ content: { title: 'Clase reprogramada', body: ev.message || 'Se ha cambiado la hora de tu clase', data: ev }, trigger: null });
+        } catch (e) {}
+      } else if (ev.type === 'CANCEL') {
+        if (ev.classId) {
+          await cancelScheduledNotificationForClass(ev.classId);
+        }
+        try {
+          await Notifications.scheduleNotificationAsync({ content: { title: 'Clase cancelada', body: ev.message || 'Tu clase fue cancelada', data: ev }, trigger: null });
+        } catch (e) {}
+      } else if (ev.type === 'REMINDER') {
+        // si backend manda un REMINDER explícito, mostrarlo
+        try {
+          await Notifications.scheduleNotificationAsync({ content: { title: 'Recordatorio', body: ev.message || 'Tu clase comienza pronto', data: ev }, trigger: null });
+        } catch (e) {}
+      } else {
+        // eventos genéricos: mostrar notificación simple si hay permiso
+        if (notifGranted) {
+          try {
+            await Notifications.scheduleNotificationAsync({ content: { title: ev.title || 'Novedad', body: ev.message || '', data: ev }, trigger: null });
+          } catch (e) {}
+        }
+      }
+    }
+
+    return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch (err) {
+    console.log('Task err', err);
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
 });
+
 
 export default function App() {
   const [authenticated, setAuthenticated] = useState(false);
@@ -210,37 +208,42 @@ export default function App() {
 
   // Polling ligero en foreground: cada 30s (activo con la app en foreground)
   const startForegroundPolling = async () => {
-    const uid = await AsyncStorage.getItem(USER_ID_KEY);
-    if (!uid) return;
-    const interval = setInterval(async () => {
-      try {
-        const sinceStr = await AsyncStorage.getItem(POLL_KEY_LAST);
-        const since = sinceStr ? Number(sinceStr) : 0;
-        const res = await fetch(
-          `${BACKEND_URL.replace(/\/$/, '')}/api/longpoll/events?userId=${encodeURIComponent(uid)}&since=${since}`,
-          { method: 'GET' }
-        );
-        if (res.ok) {
-          const events = await res.json();
-          if (Array.isArray(events) && events.length > 0) {
-            const maxTs = events.reduce((m, e) => Math.max(m, e.createdAt || 0), since);
-            await AsyncStorage.setItem(POLL_KEY_LAST, String(maxTs));
-            for (const ev of events) {
-              await Notifications.scheduleNotificationAsync({
-                content: { title: ev.type === 'REMINDER' ? 'Recordatorio: 1h' : ev.type, body: ev.message || '' },
-                trigger: null,
-              });
+  const uid = await AsyncStorage.getItem(USER_ID_KEY);
+  if (!uid) return;
+  const interval = setInterval(async () => {
+    try {
+      const events = await fetchLongPollEvents(uid);
+      if (Array.isArray(events) && events.length > 0) {
+        for (const ev of events) {
+          // misma lógica que en background: reprogramar/cancelar recordatorios
+          const settings = await Notifications.getPermissionsAsync();
+          const notifGranted = settings.granted || settings.status === 'granted';
+
+          if (ev.type === 'ENROLLED' && ev.classId && ev.classStartAt) {
+            if (notifGranted) await scheduleClassReminder(ev.classId, ev.classStartAt, 'Recordatorio: clase en 1 hora', ev.message || '');
+          } else if (ev.type === 'RESCHEDULE') {
+            if (ev.classId) {
+              await cancelScheduledNotificationForClass(ev.classId);
+              if (notifGranted && ev.classStartAt) await scheduleClassReminder(ev.classId, ev.classStartAt, 'Clase reprogramada - recordatorio 1h', ev.message || '');
             }
+            if (notifGranted) await Notifications.scheduleNotificationAsync({ content: { title: 'Clase reprogramada', body: ev.message || '' }, trigger: null });
+          } else if (ev.type === 'CANCEL') {
+            if (ev.classId) await cancelScheduledNotificationForClass(ev.classId);
+            if (notifGranted) await Notifications.scheduleNotificationAsync({ content: { title: 'Clase cancelada', body: ev.message || '' }, trigger: null });
+          } else {
+            if (notifGranted) await Notifications.scheduleNotificationAsync({ content: { title: ev.title || 'Novedad', body: ev.message || '' }, trigger: null });
           }
         }
-      } catch (e) {
-        // ignore errors silently
       }
-    }, 30 * 1000);
+    } catch (e) {
+      // silent
+    }
+  }, 30 * 1000);
 
-    // limpiar en 30 minutos si no se cancela explícitamente (seguro)
-    setTimeout(() => clearInterval(interval), 30 * 60 * 1000);
-  };
+  // limpiar en 30 minutos por seguridad (o bien exponer un clear)
+  setTimeout(() => clearInterval(interval), 30 * 60 * 1000);
+};
+
 
   // Banner pequeño para solicitar permisos después del login
   const PermissionBanner = () => (

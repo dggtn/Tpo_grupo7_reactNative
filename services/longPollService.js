@@ -1,4 +1,3 @@
-// longPollService.js
 // Servicio auxiliar (puede usarse desde pantallas y desde la tarea background) para:
 // - gestionar lastTimestamp
 // - fetch de events (long-poll)
