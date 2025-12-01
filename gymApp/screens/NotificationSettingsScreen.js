@@ -117,34 +117,141 @@ export default function NotificationSettingsScreen() {
   };
 
   const handleTestNotification = async () => {
-    try {
-      const { status } = await Notifications.getPermissionsAsync();
-      
-      if (status !== 'granted') {
-        Alert.alert('Error', 'Necesitas activar las notificaciones primero');
-        return;
-      }
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    
+    if (status !== 'granted') {
+      Alert.alert('Error', 'Necesitas activar las notificaciones primero');
+      return;
+    }
 
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '🧪 Notificación de Prueba',
-          body: 'El sistema de notificaciones está funcionando correctamente',
-          data: { type: 'TEST' },
+    // 1. Notificación inmediata
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '🧪 Prueba Inmediata',
+        body: 'Esta es una notificación de prueba inmediata',
+        data: { type: 'TEST_IMMEDIATE' },
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+        vibrate: [0, 250, 250, 250],
+      },
+      trigger: null, // Inmediato
+    });
+
+    // 2. Notificación programada para 10 segundos
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⏰ Prueba Programada',
+        body: 'Esta notificación se programó hace 10 segundos',
+        data: { type: 'TEST_SCHEDULED' },
+        sound: true,
+      },
+      trigger: {
+        seconds: 10,
+      },
+    });
+
+    // 3. Verificar eventos en el backend
+    const token = await AsyncStorage.getItem('persist:auth');
+    let authToken = null;
+    if (token) {
+      const authData = JSON.parse(token);
+      authToken = authData.token ? JSON.parse(authData.token) : null;
+    }
+
+    if (authToken) {
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.12:8080' || 'http://10.0.2.2:8080';
+      
+      const response = await fetch(`${API_URL}/notifications/poll`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
         },
-        trigger: null,
       });
 
-      Alert.alert('Enviado', 'Deberías ver la notificación ahora');
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo enviar la notificación de prueba');
+      const result = await response.json();
+      const eventCount = result.data?.length || 0;
+
+      Alert.alert(
+        '✅ Prueba Enviada',
+        `• Notificación inmediata enviada\n` +
+        `• Notificación en 10 segundos programada\n` +
+        `• Eventos en backend: ${eventCount}`,
+        [{ text: 'OK' }]
+      );
+    } else {
+      Alert.alert('Enviado', 'Deberías ver 2 notificaciones (una ahora y otra en 10 segundos)');
     }
-  };
+  } catch (error) {
+    console.error('[NotificationSettings] Error en prueba:', error);
+    Alert.alert('Error', 'No se pudo enviar la notificación de prueba: ' + error.message);
+  }
+};
 
   const handleRefreshStatus = async () => {
     setLoading(true);
     await loadSettings();
     setLoading(false);
   };
+
+  const handleTestBackendEvent = async () => {
+  try {
+    setLoading(true);
+    
+    const token = await AsyncStorage.getItem('persist:auth');
+    if (!token) {
+      Alert.alert('Error', 'No hay sesión activa');
+      return;
+    }
+    
+    const authData = JSON.parse(token);
+    const authToken = authData.token ? JSON.parse(authData.token) : null;
+    
+    if (!authToken) {
+      Alert.alert('Error', 'Token no válido');
+      return;
+    }
+
+    const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.12:8080' || 'http://10.0.2.2:8080';
+    
+    // Crear evento de prueba
+    const response = await fetch(`${API_URL}/api/test/create-test-event`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      Alert.alert(
+        '✅ Evento Creado',
+        'Evento de prueba creado en el backend. Espera ~30 segundos y debería aparecer una notificación.',
+        [{ text: 'OK' }]
+      );
+      
+      // Hacer polling inmediato
+      setTimeout(async () => {
+        const pollResponse = await fetch(`${API_URL}/notifications/poll`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+          },
+        });
+        
+        const result = await pollResponse.json();
+        console.log('[Test] Eventos después de crear:', result);
+      }, 2000);
+    } else {
+      Alert.alert('Error', 'No se pudo crear el evento de prueba');
+    }
+  } catch (error) {
+    console.error('[NotificationSettings] Error creando evento:', error);
+    Alert.alert('Error', error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <ScrollView style={styles.container}>

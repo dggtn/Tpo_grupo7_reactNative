@@ -18,7 +18,7 @@ import {
   showSuccessToast,
 } from '../../../utils/toastUtils';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.12:8080' || 'http://10.0.2.2:8080';
 
 export default function NewPasswordScreen({ navigation, route }) {
   const { email, code } = route.params;

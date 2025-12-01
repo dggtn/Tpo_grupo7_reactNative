@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.12:8080' || 'http://10.0.2.2:8080';
 const POLL_KEY_LAST = '@lp:lastTimestamp';
 const NOTIFICATION_ID_PREFIX = '@notif:class:';
 
@@ -55,17 +55,37 @@ export async function fetchLongPollEvents(userId = null, timeout = 30000) {
 
     clearTimeout(timeoutId);
 
+    // ✅ MEJORADO: Manejar diferentes códigos de error
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
       console.error('[LongPoll] Error del servidor:', response.status, errorText);
+      
+      // Si es 401, el token expiró
+      if (response.status === 401) {
+        console.log('[LongPoll] Token expirado, limpiando sesión');
+        await AsyncStorage.removeItem('persist:auth');
+      }
+      
       return [];
     }
 
     const result = await response.json();
     
+    // ✅ VALIDACIÓN ROBUSTA
+    if (!result) {
+      console.warn('[LongPoll] Respuesta vacía del servidor');
+      return [];
+    }
+
     // El backend devuelve { success: true, data: [...eventos], error: null }
-    if (result.success && Array.isArray(result.data)) {
+    if (result.success === true) {
       const events = result.data;
+      
+      if (!Array.isArray(events)) {
+        console.warn('[LongPoll] Data no es un array:', typeof events);
+        return [];
+      }
+      
       console.log('[LongPoll] Eventos recibidos:', events.length);
       
       if (events.length > 0) {
@@ -75,10 +95,17 @@ export async function fetchLongPollEvents(userId = null, timeout = 30000) {
       return events;
     }
 
+    // Si hay error en la respuesta
+    if (result.error) {
+      console.error('[LongPoll] Error en respuesta:', result.error);
+    }
+
     return [];
   } catch (error) {
     if (error.name === 'AbortError') {
       console.log('[LongPoll] Timeout alcanzado (esperado)');
+    } else if (error.message?.includes('Network')) {
+      console.warn('[LongPoll] Error de red:', error.message);
     } else {
       console.error('[LongPoll] Error en polling:', error.message);
     }
@@ -189,6 +216,8 @@ export async function markEventsAsRead(eventIds) {
     const token = await getAuthToken();
     if (!token) return;
 
+    console.log('[LongPoll] Marcando como leídos:', eventIds.length, 'eventos');
+
     const response = await fetch(`${API_URL}/notifications/mark-read`, {
       method: 'POST',
       headers: {
@@ -199,13 +228,15 @@ export async function markEventsAsRead(eventIds) {
     });
 
     if (response.ok) {
-      console.log('[LongPoll] Eventos marcados como leídos:', eventIds.length);
+      console.log('[LongPoll] Eventos marcados como leídos exitosamente');
+    } else {
+      const errorText = await response.text().catch(() => '');
+      console.warn('[LongPoll] Error marcando como leídos:', response.status, errorText);
     }
   } catch (error) {
-    console.error('[LongPoll] Error marcando eventos como leídos:', error);
+    console.error('[LongPoll] Error marcando eventos como leídos:', error.message);
   }
 }
-
 /**
  * Obtiene el contador de notificaciones no leídas
  * @returns {Promise<number>}

@@ -42,7 +42,9 @@ const PERMISSIONS_POSTPONED_KEY = '@permissions:postponed';
 // ==================== CONFIGURACIÓN DE NOTIFICACIONES ====================
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowAlert: false,    // ❌ Deprecated
+    shouldShowBanner: true,    // ✅ Nuevo
+    shouldShowList: true,      // ✅ Nuevo  
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
