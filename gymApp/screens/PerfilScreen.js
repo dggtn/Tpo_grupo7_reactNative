@@ -9,10 +9,10 @@ import {
   Platform,
   Image,
   Modal,
-  TextInput,
   ScrollView,
   Alert,
   LinearGradient,
+  TextInput
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { Ionicons } from "@expo/vector-icons";
@@ -837,7 +837,7 @@ const styles = StyleSheet.create({
     margin:"center"
   },
   button: {
-    backgroundColor: "#007AFF",
+    backgroundColor:"skyblue",
     padding: 10,
     borderRadius: 8,
     marginBottom: 16,

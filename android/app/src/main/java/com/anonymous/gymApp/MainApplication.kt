@@ -1,5 +1,5 @@
 package com.anonymous.gymApp
-
+import com.anonymous.gymApp.BuildConfig
 import android.app.Application
 import android.content.res.Configuration
 

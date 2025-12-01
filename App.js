@@ -15,7 +15,7 @@ import Toast from 'react-native-toast-message';
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as Notifications from 'expo-notifications';
-import * as Camera from 'expo-camera';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
@@ -115,7 +115,7 @@ TaskManager.defineTask(TASK_NAME, async () => {
 
 export default function App() {
   const [authenticated, setAuthenticated] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userId, setUserId] = useState(null);
   const [permissionsPostponed, setPermissionsPostponed] = useState(false);
   const [showPermissionBanner, setShowPermissionBanner] = useState(false);
 
@@ -182,8 +182,6 @@ export default function App() {
     try {
       // Notificaciones
       const { status: notifStatus } = await Notifications.requestPermissionsAsync();
-      // Cámara
-      const { status: camStatus } = await Camera.requestCameraPermissionsAsync();
 
       if (notifStatus !== 'granted') {
         Toast.show({
@@ -195,19 +193,6 @@ export default function App() {
         Toast.show({
           type: 'success',
           text1: 'Permiso notificaciones otorgado',
-        });
-      }
-
-      if (camStatus !== 'granted') {
-        Toast.show({
-          type: 'error',
-          text1: 'Permiso cámara',
-          text2: 'No se otorgó permiso para la cámara. Puedes activarlo desde ajustes.',
-        });
-      } else {
-        Toast.show({
-          type: 'success',
-          text1: 'Permiso cámara otorgado',
         });
       }
 

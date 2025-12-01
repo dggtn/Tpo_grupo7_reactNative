@@ -1,3 +1,4 @@
+// gymApp/screens/HistorialScreen.js
 import { useEffect, useState, useCallback } from "react";
 import {
   View,
@@ -9,6 +10,7 @@ import {
   StyleSheet,
   Modal,
   Pressable,
+  TextInput
 } from "react-native";
 import { useSelector } from "react-redux";
 import { selectToken } from "../../store/slices/authSlice";
@@ -35,7 +37,9 @@ export default function HistorialScreen() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false)
   const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState("")
   const [selectedCourse, setSelectedCourse] = useState({})
+  
 
   // 👉 token desde Redux (igual que en MisReservas / Checkin / DetalleCurso)
   const token = useSelector(selectToken);
@@ -77,6 +81,8 @@ export default function HistorialScreen() {
   }, []);
 
   const openModal = (course) => {
+    setRating(0)
+    setComment("")
     setSelectedCourse(course)
     setModalOpen(true)
   }
@@ -87,7 +93,7 @@ export default function HistorialScreen() {
     const endpoint = `${API_URL}/shifts/${selectedCourse.shiftId}/rating`
     const body = {
       rating: rating,
-      comment: ''
+      comment: comment
     }
 
     fetch(endpoint, {
@@ -99,6 +105,7 @@ export default function HistorialScreen() {
     .then(rta => {
       const item = items.find(item => item.shiftId == selectedCourse.shiftId)
       item.rating = rta.data
+
       setItems((lista) => lista.map(i => i.shiftId === item.shiftId ? item : i));
       showSuccessToast('Calificación exitosa', 'Gracias por compartir tu opinión')
     })
@@ -113,6 +120,7 @@ export default function HistorialScreen() {
     const calificado = !!item?.rating
 
     return (
+      
       <View style={styles.card}>
         <Text style={styles.curso}>{nombreCurso}</Text>
         {diaClase ? (
@@ -121,7 +129,7 @@ export default function HistorialScreen() {
         {sede ? <Text style={styles.linea}>Sede: {sede}</Text> : null}
         <Text style={[styles.linea, styles.estado]}>Estado: {estado}</Text>
         {calificado && <Text style={[styles.linea, styles.estado]}>Tu calificación: {item.rating.valor}</Text> }
-        {!calificado && <Button onPress={() => openModal(item)}>Calificar</Button>}
+        {!calificado && <Button onPress={() => openModal(item)} style={[styles.button, styles.buttonClose]}>Calificar</Button>}
       </View>
     );
   };
@@ -131,7 +139,7 @@ export default function HistorialScreen() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.vista}>
       <FlatList        
         data={items ?? []}
         keyExtractor={(it, idx) => String(it?.reservationId ?? idx)}
@@ -160,6 +168,14 @@ export default function HistorialScreen() {
                   rating={rating} 
                   onChange={(rating) => {setRating(rating)}}
                   step="full"/>
+              <TextInput
+                        style={styles.input}
+                        onChangeText={(comment)=>setComment(comment)}
+                        value={comment}
+                        placeholder="agrega comentario"
+                        placeholderTextColor="#000000"
+                      />
+                  
                 <Pressable
                   style={[styles.button, styles.buttonClose]}
                   onPress={() => setModalOpen(!modalOpen)}>
@@ -171,7 +187,7 @@ export default function HistorialScreen() {
                     calificarCurso()
                     setModalOpen(!modalOpen)
                     }}>
-                   <Text style={styles.textStyle}>Calificar</Text>
+                   <Text >Calificar</Text>
                 </Pressable>
               </View>
           </View>
@@ -183,11 +199,12 @@ export default function HistorialScreen() {
 
 const styles = StyleSheet.create({
   card: {
+    
     padding: 12,
     marginHorizontal: 16,
     marginVertical: 8,
     borderRadius: 10,
-    backgroundColor: "#f5f5f5",
+    backgroundColor:"#D2FCFC",
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
@@ -216,6 +233,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  input:{
+    borderColor:"#274DF5",
+    borderWidth:3,
+    borderRadius:20,
+    padding:3,
+    marginBottom:6,
+    marginTop:3
+
+  },
   modalView: {
     margin: 20,
     backgroundColor: 'white',
@@ -235,8 +261,15 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 10,
     elevation: 2,
+    marginTop:4,
+    marginBottom:4
+
   },
   buttonClose: {
-    backgroundColor: '#2196F3',
+   backgroundColor: "skyblue",
   },
+  vista:{
+    flex: 1 ,
+    backgroundColor: "linear-gradient(120deg, rgba(255, 156, 117, 1) 0%, rgba(163, 235, 226, 1) 100%);",
+  }
 });

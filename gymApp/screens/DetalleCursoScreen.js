@@ -189,7 +189,7 @@ export default function DetalleCursoScreen({ route }) {
             <Marker coordinate={{ latitude: lat, longitude: lng }} title={sedeName} />
           </MapView>
           <View style={{ height: 16 }} />
-          <Button style={styles.btn} mode="contained" onPress={reservar} loading={isBooking} style={{ marginBottom: 24}}>
+          <Button style={styles.btn} mode="contained" onPress={reservar} loading={isBooking}>
             Reservar
           </Button>
         </View>
