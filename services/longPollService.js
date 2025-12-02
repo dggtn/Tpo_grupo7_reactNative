@@ -56,19 +56,16 @@ async function isEventProcessed(eventId) {
 }
 
 /**
- * ✅ CRÍTICO: Verifica permisos reales de notificación
+ * ✅ Verifica permisos reales de notificación
  */
 async function checkNotificationPermissions() {
   try {
     const settings = await Notifications.getPermissionsAsync();
     const granted = settings.granted || settings.status === 'granted';
     
-    console.log('[LongPoll] 🔍 Permisos de notificación:', {
-      granted,
-      status: settings.status,
-      ios: settings.ios,
-      android: settings.android
-    });
+    if (!granted) {
+      console.warn('[LongPoll] ⚠️ Permisos NO otorgados:', settings.status);
+    }
     
     return granted;
   } catch (error) {
@@ -119,7 +116,6 @@ export async function fetchLongPollEvents(userId = null, timeout = 30000) {
 
     const result = await response.json();
     
-    // ✅ CRÍTICO: El backend devuelve {ok: true, data: [...]}
     if (!result || result.ok !== true) {
       console.warn('[LongPoll] ⚠️ Respuesta no exitosa:', result);
       return [];
@@ -169,10 +165,9 @@ export async function fetchLongPollEvents(userId = null, timeout = 30000) {
  */
 export async function scheduleClassReminder(classId, classStartAt, title, body) {
   try {
-    // ✅ Verificar permisos ANTES de programar
     const hasPermission = await checkNotificationPermissions();
     if (!hasPermission) {
-      console.warn('[LongPoll] ⚠️ Sin permisos, no se puede programar recordatorio');
+      console.warn('[LongPoll] 🚫 Sin permisos, no se puede programar recordatorio');
       return;
     }
 
@@ -188,7 +183,7 @@ export async function scheduleClassReminder(classId, classStartAt, title, body) 
       return;
     }
 
-    const reminderDate = new Date(startDate.getTime() - 60 * 60 * 1000); // 1h antes
+    const reminderDate = new Date(startDate.getTime() - 60 * 60 * 1000);
     const now = new Date();
 
     if (reminderDate <= now) {
@@ -196,7 +191,6 @@ export async function scheduleClassReminder(classId, classStartAt, title, body) 
       return;
     }
 
-    // Cancelar notificación previa
     await cancelScheduledNotificationForClass(classId);
 
     const notificationId = `class_${classId}`;
@@ -211,7 +205,6 @@ export async function scheduleClassReminder(classId, classStartAt, title, body) 
     if (Platform.OS === 'android') {
       content.priority = Notifications.AndroidNotificationPriority.HIGH;
       content.channelId = 'default';
-      content.vibrate = [0, 250, 250, 250];
     }
     
     const scheduledId = await Notifications.scheduleNotificationAsync({
@@ -227,8 +220,8 @@ export async function scheduleClassReminder(classId, classStartAt, title, body) 
       scheduledId
     );
 
-    console.log(`[LongPoll] ⏰ Recordatorio programado para: ${reminderDate.toLocaleString()}`);
-    console.log(`[LongPoll] 📍 Clase ID: ${classId}`);
+    console.log(`[LongPoll] ⏰ Recordatorio programado para: ${reminderDate.toLocaleString('es-AR')}`);
+    console.log(`[LongPoll] 🆔 Notification ID: ${scheduledId}`);
   } catch (error) {
     console.error('[LongPoll] ❌ Error programando recordatorio:', error);
   }
@@ -334,7 +327,6 @@ export async function getUnreadCount() {
  */
 export async function processEvent(event) {
   try {
-    // Prevenir duplicados
     if (event.id) {
       const processed = await isEventProcessed(event.id);
       if (processed) {
@@ -343,10 +335,9 @@ export async function processEvent(event) {
       }
     }
 
-    // ✅ CRÍTICO: Verificar permisos ANTES de procesar
     const hasPermission = await checkNotificationPermissions();
     if (!hasPermission) {
-      console.log('[LongPoll] 🔕 Sin permisos de notificación, omitiendo evento');
+      console.warn('[LongPoll] 🚫 Sin permisos, evento ignorado:', event.eventType);
       return;
     }
 
@@ -360,8 +351,7 @@ export async function processEvent(event) {
     }
 
     console.log(`[LongPoll] 📨 Procesando: ${eventType}`);
-    console.log(`[LongPoll] 📍 Shift ID: ${relatedShiftId}`);
-    console.log(`[LongPoll] 📦 Metadata:`, parsedMetadata);
+    console.log(`[LongPoll] 🆔 Shift ID: ${relatedShiftId}`);
 
     switch (eventType) {
       case 'ENROLLMENT_CONFIRMED':
@@ -371,24 +361,14 @@ export async function processEvent(event) {
         const classTime = parsedMetadata.classTime || parsedMetadata.fechaClase || parsedMetadata.classStartAt;
         
         if (classTime && relatedShiftId) {
-          console.log('[LongPoll] 📅 Programando recordatorio...');
-          console.log('[LongPoll] 🕐 Fecha de clase:', classTime);
-          
           await scheduleClassReminder(
             relatedShiftId,
             classTime,
             '🔔 Recordatorio de clase',
             `Tu clase comienza en 1 hora: ${title || 'Clase programada'}`
           );
-        } else {
-          console.warn('[LongPoll] ⚠️ Faltan datos para programar recordatorio:', { 
-            classTime, 
-            shiftId: relatedShiftId,
-            metadataKeys: Object.keys(parsedMetadata)
-          });
         }
         
-        // Mostrar notificación inmediata
         await showImmediateNotification(
           title || '✅ Inscripción confirmada',
           message || 'Tu reserva fue confirmada exitosamente',
@@ -459,7 +439,6 @@ export async function processEvent(event) {
         );
     }
 
-    // Marcar como procesado
     if (event.id) {
       await markEventAsProcessed(event.id);
       console.log('[LongPoll] ✅ Evento marcado como procesado:', event.id);
@@ -467,48 +446,61 @@ export async function processEvent(event) {
 
   } catch (error) {
     console.error('[LongPoll] ❌ Error procesando evento:', error);
-    console.error('[LongPoll] Stack:', error.stack);
   }
 }
 
 /**
- * Muestra una notificación inmediata
+ * ✅ VERSIÓN MEJORADA: Muestra notificación con configuración completa
  */
 async function showImmediateNotification(title, body, data) {
   try {
-    console.log('[LongPoll] 🔔 Preparando notificación inmediata...');
+    console.log('[LongPoll] ═══════════════════════════════════════');
+    console.log('[LongPoll] 🔔 PREPARANDO NOTIFICACIÓN INMEDIATA');
     console.log('[LongPoll] 📝 Título:', title);
-    console.log('[LongPoll] 📝 Mensaje:', body);
+    console.log('[LongPoll] 💬 Cuerpo:', body);
+    console.log('[LongPoll] 📦 Data:', JSON.stringify(data));
 
-    // ✅ VERIFICAR PERMISOS UNA VEZ MÁS
     const hasPermission = await checkNotificationPermissions();
     if (!hasPermission) {
-      console.error('[LongPoll] ❌ No se puede mostrar notificación: sin permisos');
+      console.error('[LongPoll] 🚫 BLOQUEADO: Sin permisos de notificación');
+      console.log('[LongPoll] ═══════════════════════════════════════');
       return;
     }
 
+    console.log('[LongPoll] ✅ Permisos OK');
+
+    // ✅ CONFIGURACIÓN SIMPLIFICADA QUE FUNCIONA
     const content = {
-      title,
-      body,
-      data,
+      title: String(title || 'Notificación'),
+      body: String(body || ''),
+      data: data || {},
       sound: true,
     };
 
+    // ✅ Configuración específica de Android
     if (Platform.OS === 'android') {
       content.priority = Notifications.AndroidNotificationPriority.HIGH;
       content.channelId = 'default';
-      content.color = '#74C1E6';
-      content.vibrate = [0, 250, 250, 250];
+      console.log('[LongPoll] 📱 Plataforma: Android');
+      console.log('[LongPoll] 📡 Canal: default');
+      console.log('[LongPoll] ⚡ Prioridad: HIGH');
     }
 
+    console.log('[LongPoll] 📤 ENVIANDO NOTIFICACIÓN...');
+    
     const notificationId = await Notifications.scheduleNotificationAsync({
       content,
       trigger: null, // Inmediato
     });
 
-    console.log('[LongPoll] ✅ Notificación enviada con ID:', notificationId);
+    console.log('[LongPoll] ✅ ¡NOTIFICACIÓN ENVIADA!');
+    console.log('[LongPoll] 🆔 ID de notificación:', notificationId);
+    console.log('[LongPoll] ═══════════════════════════════════════');
   } catch (error) {
-    console.error('[LongPoll] ❌ Error mostrando notificación:', error);
-    console.error('[LongPoll] Stack:', error.stack);
+    console.error('[LongPoll] ═══════════════════════════════════════');
+    console.error('[LongPoll] ❌ ERROR CRÍTICO AL MOSTRAR NOTIFICACIÓN');
+    console.error('[LongPoll] 📛 Error:', error.message);
+    console.error('[LongPoll] 📚 Stack:', error.stack);
+    console.error('[LongPoll] ═══════════════════════════════════════');
   }
 }

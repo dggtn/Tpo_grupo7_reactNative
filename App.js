@@ -34,20 +34,31 @@ import { selectIsAuthenticated } from './store/slices/authSlice';
 LogBox.ignoreLogs([
   'Non-serializable values were found in the navigation state',
   '`shouldShowAlert` is deprecated',
+  'reading dataString is deprecated',
+  'expo-background-fetch: This library is deprecated',
 ]);
 
 const TASK_NAME = 'LONG_POLL_TASK_v2';
 const PERMISSIONS_KEY = '@permissions:status';
 const PERMISSIONS_POSTPONED_KEY = '@permissions:postponed';
 
-// ==================== CONFIGURACIÓN DE NOTIFICACIONES ====================
+// ==================== ✅ CONFIGURACIÓN CRÍTICA PARA ANDROID ====================
+// Esta es la clave: DEBES devolver shouldShowAlert para compatibilidad
+// Y shouldPlaySound debe estar en true para forzar la presentación
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: false,
-    shouldShowBanner: true,
-    shouldSetBadge: true,
-    shouldPlaySound: true,
-  }),
+  handleNotification: async (notification) => {
+    console.log('[NotificationHandler] 🔔 Notificación interceptada:', notification.request.content.title);
+    
+    // ✅ CONFIGURACIÓN QUE FUNCIONA EN ANDROID
+    const config = {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    };
+    
+    console.log('[NotificationHandler] ⚙️ Configuración:', config);
+    return config;
+  },
 });
 
 // ==================== DEFINICIÓN DE LA TAREA DE BACKGROUND ====================
@@ -102,18 +113,39 @@ function AppContent() {
     const setupNotifications = async () => {
       if (Platform.OS === 'android') {
         try {
+          // ✅ CONFIGURACIÓN DETALLADA DEL CANAL
           await Notifications.setNotificationChannelAsync('default', {
-            name: 'Notificaciones de Clases',
-            importance: Notifications.AndroidImportance.HIGH,
+            name: 'Notificaciones Principales',
+            importance: Notifications.AndroidImportance.HIGH, // HIGH funciona mejor que MAX
             vibrationPattern: [0, 250, 250, 250],
             lightColor: '#74C1E6',
             sound: 'default',
             enableVibrate: true,
             showBadge: true,
+            enableLights: true,
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            bypassDnd: false,
           });
-          console.log('[App] ✅ Canal de notificaciones configurado');
+          
+          console.log('[App] ✅ Canal "default" configurado');
+          
+          // ✅ CREAR UN SEGUNDO CANAL DE ALTA PRIORIDAD
+          await Notifications.setNotificationChannelAsync('high-priority', {
+            name: 'Notificaciones Urgentes',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 500, 500, 500],
+            lightColor: '#FF0000',
+            sound: 'default',
+            enableVibrate: true,
+            showBadge: true,
+            enableLights: true,
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            bypassDnd: true,
+          });
+          
+          console.log('[App] ✅ Canal "high-priority" configurado');
         } catch (error) {
-          console.error('[App] ❌ Error configurando canal:', error);
+          console.error('[App] ❌ Error configurando canales:', error);
         }
       }
     };
@@ -129,11 +161,22 @@ function AppContent() {
         const postponedStatus = await AsyncStorage.getItem(PERMISSIONS_POSTPONED_KEY);
         
         if (savedStatus === 'granted') {
-          // ✅ Verificar que los permisos REALMENTE estén otorgados
-          const { status: notifStatus } = await Notifications.getPermissionsAsync();
-          const { status: cameraStatus } = await Camera.getCameraPermissionsAsync();
+          const notifSettings = await Notifications.getPermissionsAsync();
+          const cameraSettings = await Camera.getCameraPermissionsAsync();
           
-          const reallyGranted = notifStatus === 'granted' && cameraStatus === 'granted';
+          console.log('[App] 🔍 Estado de permisos:', {
+            notificaciones: {
+              status: notifSettings.status,
+              granted: notifSettings.granted,
+              canAskAgain: notifSettings.canAskAgain,
+            },
+            camara: {
+              status: cameraSettings.status,
+              granted: cameraSettings.granted,
+            },
+          });
+          
+          const reallyGranted = notifSettings.granted && cameraSettings.granted;
           
           if (reallyGranted) {
             setPermissionsGranted(true);
@@ -161,7 +204,6 @@ function AppContent() {
   // ==================== MOSTRAR BANNER DESPUÉS DE AUTENTICARSE ====================
   useEffect(() => {
     const handlePostLogin = async () => {
-      // ✅ Limpiar timeout previo si existe
       if (bannerTimeout.current) {
         clearTimeout(bannerTimeout.current);
       }
@@ -169,7 +211,6 @@ function AppContent() {
       if (isAuthenticated && !permissionsGranted && !permissionsPostponed) {
         console.log('[App] 🔔 Programando banner de permisos...');
         
-        // ✅ Esperar 3 segundos para que se complete el prompt de biometría
         bannerTimeout.current = setTimeout(() => {
           setShowPermissionBanner(true);
           
@@ -314,13 +355,21 @@ function AppContent() {
   useEffect(() => {
     const responseSubscription = Notifications.addNotificationResponseReceivedListener(
       response => {
-        console.log('[App] 🔔 Notificación tocada:', response.notification.request.content);
+        console.log('[App] 👆 Notificación tocada');
+        console.log('[App] 📦 Data:', response.notification.request.content.data);
       }
     );
 
     const receivedSubscription = Notifications.addNotificationReceivedListener(
       notification => {
-        console.log('[App] 📬 Notificación recibida:', notification.request.content);
+        console.log('[App] 📬 Notificación RECIBIDA en foreground');
+        console.log('[App] 📝 Título:', notification.request.content.title);
+        console.log('[App] 💬 Body:', notification.request.content.body);
+        
+        // ✅ FORZAR PRESENTACIÓN MANUAL SI NO SE MUESTRA
+        if (Platform.OS === 'android') {
+          console.log('[App] 🔔 Intentando mostrar manualmente...');
+        }
       }
     );
 
@@ -335,21 +384,22 @@ function AppContent() {
     try {
       console.log('[App] 🔐 Solicitando permisos...');
 
-      // 1. Notificaciones
+      // 1. Cámara primero
+      console.log('[App] 📷 Pidiendo permiso de cámara...');
+      const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
+      console.log('[App] 📷 Resultado cámara:', cameraStatus);
+
+      // 2. Notificaciones
+      console.log('[App] 🔔 Pidiendo permiso de notificaciones...');
       const { status: notifStatus } = await Notifications.requestPermissionsAsync({
         ios: {
           allowAlert: true,
           allowBadge: true,
           allowSound: true,
         },
-        android: {},
       });
       
       console.log('[App] 🔔 Resultado notificaciones:', notifStatus);
-
-      // 2. Cámara
-      const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
-      console.log('[App] 📷 Resultado cámara:', cameraStatus);
 
       if (notifStatus === 'granted' && cameraStatus === 'granted') {
         setPermissionsGranted(true);
@@ -366,18 +416,33 @@ function AppContent() {
         });
 
         console.log('[App] ✅ Permisos guardados exitosamente');
+        
+        // ✅ NOTIFICACIÓN DE PRUEBA INMEDIATA
+        console.log('[App] 🧪 Enviando notificación de prueba...');
+        setTimeout(async () => {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: '🎉 ¡Listo!',
+              body: 'Las notificaciones están activadas correctamente',
+              data: { type: 'SETUP_TEST' },
+              sound: true,
+              priority: Platform.OS === 'android' 
+                ? Notifications.AndroidNotificationPriority.HIGH 
+                : undefined,
+            },
+            trigger: null,
+          });
+          console.log('[App] ✅ Notificación de prueba enviada');
+        }, 1500);
+        
       } else {
-        let message = 'Algunos permisos no fueron otorgados.';
-        if (notifStatus !== 'granted') message = 'Permiso de notificaciones denegado.';
-        if (cameraStatus !== 'granted') message = 'Permiso de cámara denegado.';
-        if (notifStatus !== 'granted' && cameraStatus !== 'granted') {
-          message = 'Ambos permisos denegados.';
-        }
-
+        let message = 'Ve a Configuración > Permisos para habilitarlos';
+        
         Toast.show({
           type: 'error',
           text1: 'Permisos incompletos',
           text2: message,
+          visibilityTime: 6000,
         });
       }
     } catch (error) {
@@ -385,7 +450,7 @@ function AppContent() {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'No se pudieron solicitar los permisos',
+        text2: error.message,
       });
     }
   };
