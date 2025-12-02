@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { API_BASE_URL } from '../config/constants';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.12:8080' || 'http://10.0.2.2:8080';
+const API_URL = API_BASE_URL
 const POLL_KEY_LAST = '@lp:lastTimestamp';
 const NOTIFICATION_ID_PREFIX = '@notif:class:';
 const EVENT_IDS_PROCESSED = '@lp:processedEventIds';

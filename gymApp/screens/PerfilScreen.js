@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "../../config/constants";
 import {
   View,
   Text,
@@ -46,8 +47,8 @@ const PerfilScreen = () => {
   const userEmail = useSelector(selectUserEmail);
   const biometricEnabled = useSelector(selectBiometricEnabled);
   const biometricAvailable = useSelector(selectBiometricAvailable);
-
-  const url = process.env.EXPO_PUBLIC_API_URL;
+  
+  const url = API_BASE_URL;
 
   const [text, onChangeText] = useState();
   const [text2, onChangeText2] = useState();

@@ -5,8 +5,9 @@ import { Button } from "react-native-paper";
 import { useSelector } from "react-redux";
 import { selectToken } from "../../store/slices/authSlice"; 
 import { LinearGradient } from "expo-linear-gradient";
+import { API_BASE_URL } from '../config/constants';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const API_URL = API_BASE_URL;
 
 export default function DetalleCursoScreen({ route }) {
   const idCurso = route?.params?.idCurso;

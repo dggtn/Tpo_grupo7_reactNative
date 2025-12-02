@@ -18,8 +18,9 @@ import {
   showSuccessToast,
   showInfoToast,
 } from '../../../utils/toastUtils';
+import { API_BASE_URL } from '../config/constants';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.12:8080' || 'http://10.0.2.2:8080';
+const API_URL = API_BASE_URL;
 const RESEND_COOLDOWN = 120; // 2 minutos
 const CODE_EXPIRATION = 900; // 15 minutos
 

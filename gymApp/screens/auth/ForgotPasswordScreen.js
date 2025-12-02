@@ -17,8 +17,9 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../utils/toastUtils';
+import { API_BASE_URL } from '../config/constants';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.12:8080' || 'http://10.0.2.2:8080';
+const API_URL = API_BASE_URL;
 
 export default function ForgotPasswordScreen({ navigation }) {
   const [email, setEmail] = useState('');

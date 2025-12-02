@@ -14,13 +14,14 @@ import { selectToken } from "../../store/slices/authSlice";
 import { useNavigation } from "@react-navigation/native";
 import CarouselComponent from "../components/Carousel";
 import Dropdown from "../components/DropdownComponent";
+import { API_BASE_URL } from '../config/constants';
 
 export default function HomeScreen() {
 
   const opcionTodos = {value: -1, label: 'TODOS'}
 
   const navigation = useNavigation();
-  const url = process.env.EXPO_PUBLIC_API_URL;
+  const url = API_BASE_URL;
 
   const [isLoading, setLoading] = useState(true);
   const [cursos, setCursos] = useState([]);        

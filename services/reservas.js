@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_BASE_URL } from '../config/constants';
 
-const API = process.env.EXPO_PUBLIC_API_URL;
+const API = API_BASE_URL
 
 async function authHeaders() {
   const token = await AsyncStorage.getItem("authToken"); 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config/constants';
 import {
   View,
   Text,
@@ -265,7 +266,7 @@ export default function NotificationSettingsScreen() {
         return;
       }
 
-      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.12:8080' || 'http://10.0.2.2:8080';
+      const API_URL = API_BASE_URL;
       
       const response = await fetch(`${API_URL}/notifications/poll`, {
         method: 'GET',
