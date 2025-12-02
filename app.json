@@ -12,28 +12,13 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.ritmofit",
-      "infoPlist": {
-        "NSCameraUsageDescription": "Esta app necesita acceso a la cámara para escanear códigos QR y hacer check-in en tus clases.",
-        "NSPhotoLibraryUsageDescription": "Permite agregar fotos a tu perfil desde la galería."
-      }
+      "supportsTablet": true
     },
-     "android": {
-      "permissions": [
-        "CAMERA",
-        "POST_NOTIFICATIONS",
-        "RECEIVE_BOOT_COMPLETED",
-        "WAKE_LOCK"
-      ],
-      "useNextNotificationsApi": true,
+    "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#74C1E6"
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.gymApp"
@@ -53,32 +38,7 @@
       ]
     },
     "plugins": [
-      "expo-secure-store",
-       [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#74C1E6",
-          "sounds": [
-            "./assets/notification-sound.wav"
-          ],
-          "androidMode": "default",
-          "androidCollapsedTitle": "RitmoFit"
-        }
-      ],
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Esta app necesita acceso a la cámara para escanear códigos QR y hacer check-in en tus clases."
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Permite agregar fotos a tu perfil desde la galería.",
-          "cameraPermission": "Permite tomar fotos para tu perfil."
-        }
-      ]
+      "expo-secure-store"
     ]
   }
 }

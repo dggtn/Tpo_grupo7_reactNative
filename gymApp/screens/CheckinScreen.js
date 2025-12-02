@@ -4,7 +4,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { Button } from "react-native-paper";
 import { useSelector } from "react-redux";
 import { selectToken } from "../../store/slices/authSlice";
-import { API_BASE_URL } from '../config/constants';
+import { API_BASE_URL } from "../../config/constants";
 
 const API_URL = API_BASE_URL;
 
