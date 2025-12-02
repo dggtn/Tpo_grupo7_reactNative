@@ -17,7 +17,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../utils/toastUtils';
-import { API_BASE_URL } from '../config/constants';
+import { API_BASE_URL } from '../../../config/constants';
 
 const API_URL = API_BASE_URL;
 

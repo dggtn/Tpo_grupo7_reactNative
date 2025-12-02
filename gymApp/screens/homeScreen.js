@@ -14,7 +14,7 @@ import { selectToken } from "../../store/slices/authSlice";
 import { useNavigation } from "@react-navigation/native";
 import CarouselComponent from "../components/Carousel";
 import Dropdown from "../components/DropdownComponent";
-import { API_BASE_URL } from '../config/constants';
+import { API_BASE_URL } from "../../config/constants";
 
 export default function HomeScreen() {
 

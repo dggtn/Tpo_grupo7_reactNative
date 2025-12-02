@@ -18,7 +18,7 @@ import {
   showSuccessToast,
   showInfoToast,
 } from '../../../utils/toastUtils';
-import { API_BASE_URL } from '../config/constants';
+import { API_BASE_URL } from '../../../config/constants';
 
 const API_URL = API_BASE_URL;
 const RESEND_COOLDOWN = 120; // 2 minutos
