@@ -87,12 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-
-    namespace "com.anonymous.gymApp"
-
+    namespace "com.helloworld"
     defaultConfig {
-
-        applicationId "com.anonymous.gymApp"
+        applicationId "com.helloworld"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

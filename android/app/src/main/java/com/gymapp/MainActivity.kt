@@ -1,5 +1,5 @@
-package com.anonymous.gymApp
-import com.anonymous.gymApp.BuildConfig
+package com.helloworld
+
 import android.os.Build
 import android.os.Bundle
 
