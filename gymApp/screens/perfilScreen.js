@@ -566,14 +566,8 @@ const PerfilScreen = () => {
 export default PerfilScreen;
 
 const styles = StyleSheet.create({
-<<<<<<< HEAD
   scrollContent: {
     flexGrow: 1,
-=======
-  container: {
-    flex: 1,
-    backgroundColor: "#b35cbdff",
->>>>>>> 6f9e9ee99e1b03a7199dc0b3c62afd333f418bac
     padding: 20,
     justifyContent: "center",
     backgroundColor:"linear-gradient(120deg, rgba(255, 156, 117, 1) 0%, rgba(163, 235, 226, 1) 100%);",
