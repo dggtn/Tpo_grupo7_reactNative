@@ -26,6 +26,7 @@ export default function NotificationSettingsScreen() {
   const [backgroundTaskRegistered, setBackgroundTaskRegistered] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [scheduledCount, setScheduledCount] = useState(0);
 
   useEffect(() => {
     loadSettings();
@@ -44,6 +45,10 @@ export default function NotificationSettingsScreen() {
       // Obtener contador de no leídas
       const count = await getUnreadCount();
       setUnreadCount(count);
+
+      // Obtener notificaciones programadas
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      setScheduledCount(scheduled.length);
     } catch (error) {
       console.error('[NotificationSettings] Error cargando configuración:', error);
     }
@@ -117,49 +122,149 @@ export default function NotificationSettingsScreen() {
   };
 
   const handleTestNotification = async () => {
-  try {
-    const { status } = await Notifications.getPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert('Error', 'Necesitas activar las notificaciones primero');
-      return;
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Error', 'Necesitas activar las notificaciones primero');
+        return;
+      }
+
+      // 1. Notificación inmediata
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🧪 Prueba Inmediata',
+          body: 'Esta es una notificación de prueba inmediata',
+          data: { type: 'TEST_IMMEDIATE' },
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          vibrate: [0, 250, 250, 250],
+        },
+        trigger: null, // Inmediato
+      });
+
+      // 2. Notificación programada para 10 segundos
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '⏰ Prueba Programada',
+          body: 'Esta notificación se programó hace 10 segundos',
+          data: { type: 'TEST_SCHEDULED' },
+          sound: true,
+        },
+        trigger: {
+          seconds: 10,
+        },
+      });
+
+      // 3. Simular recordatorio de clase (1 minuto)
+      const oneMinuteLater = new Date(Date.now() + 60 * 1000);
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🔔 Recordatorio de Clase',
+          body: 'Tu clase comienza pronto - Esta es una prueba',
+          data: { type: 'TEST_CLASS_REMINDER', classId: 'test_123' },
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          vibrate: [0, 250, 250, 250],
+        },
+        trigger: {
+          date: oneMinuteLater,
+        },
+      });
+
+      Alert.alert(
+        '✅ Pruebas Enviadas',
+        '• Notificación inmediata enviada\n' +
+        '• Notificación en 10 segundos programada\n' +
+        '• Recordatorio de clase en 1 minuto programado',
+        [{ text: 'OK' }]
+      );
+
+      await loadSettings();
+    } catch (error) {
+      console.error('[NotificationSettings] Error en prueba:', error);
+      Alert.alert('Error', 'No se pudo enviar la notificación de prueba: ' + error.message);
     }
+  };
 
-    // 1. Notificación inmediata
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '🧪 Prueba Inmediata',
-        body: 'Esta es una notificación de prueba inmediata',
-        data: { type: 'TEST_IMMEDIATE' },
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.HIGH,
-        vibrate: [0, 250, 250, 250],
-      },
-      trigger: null, // Inmediato
-    });
+  const handleViewScheduled = async () => {
+    try {
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      
+      if (scheduled.length === 0) {
+        Alert.alert('Sin Notificaciones', 'No hay notificaciones programadas');
+        return;
+      }
 
-    // 2. Notificación programada para 10 segundos
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '⏰ Prueba Programada',
-        body: 'Esta notificación se programó hace 10 segundos',
-        data: { type: 'TEST_SCHEDULED' },
-        sound: true,
-      },
-      trigger: {
-        seconds: 10,
-      },
-    });
+      const details = scheduled.map((notif, index) => {
+        const trigger = notif.trigger;
+        let triggerInfo = 'Desconocido';
+        
+        if (trigger?.type === 'date') {
+          const date = new Date(trigger.value);
+          triggerInfo = date.toLocaleString('es-AR');
+        } else if (trigger?.seconds) {
+          triggerInfo = `En ${trigger.seconds} segundos`;
+        }
 
-    // 3. Verificar eventos en el backend
-    const token = await AsyncStorage.getItem('persist:auth');
-    let authToken = null;
-    if (token) {
+        return `${index + 1}. ${notif.content.title}\n   ${triggerInfo}`;
+      }).join('\n\n');
+
+      Alert.alert(
+        `📋 Notificaciones Programadas (${scheduled.length})`,
+        details,
+        [{ text: 'OK' }],
+        { cancelable: true }
+      );
+    } catch (error) {
+      console.error('[NotificationSettings] Error viendo programadas:', error);
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const handleCancelAll = async () => {
+    Alert.alert(
+      'Cancelar Todas',
+      '¿Estás seguro de que quieres cancelar todas las notificaciones programadas?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Sí, Cancelar',
+          style: 'destructive',
+          onPress: async () => {
+            await cancelAllScheduledNotifications();
+            await loadSettings();
+            Alert.alert('✅ Canceladas', 'Todas las notificaciones fueron canceladas');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRefreshStatus = async () => {
+    setLoading(true);
+    await loadSettings();
+    setLoading(false);
+  };
+
+  const handleTestBackendPoll = async () => {
+    try {
+      setLoading(true);
+      
+      const token = await AsyncStorage.getItem('persist:auth');
+      if (!token) {
+        Alert.alert('Error', 'No hay sesión activa');
+        return;
+      }
+      
       const authData = JSON.parse(token);
-      authToken = authData.token ? JSON.parse(authData.token) : null;
-    }
+      const authToken = authData.token ? JSON.parse(authData.token) : null;
+      
+      if (!authToken) {
+        Alert.alert('Error', 'Token no válido');
+        return;
+      }
 
-    if (authToken) {
       const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.12:8080' || 'http://10.0.2.2:8080';
       
       const response = await fetch(`${API_URL}/notifications/poll`, {
@@ -169,89 +274,28 @@ export default function NotificationSettingsScreen() {
         },
       });
 
-      const result = await response.json();
-      const eventCount = result.data?.length || 0;
-
-      Alert.alert(
-        '✅ Prueba Enviada',
-        `• Notificación inmediata enviada\n` +
-        `• Notificación en 10 segundos programada\n` +
-        `• Eventos en backend: ${eventCount}`,
-        [{ text: 'OK' }]
-      );
-    } else {
-      Alert.alert('Enviado', 'Deberías ver 2 notificaciones (una ahora y otra en 10 segundos)');
-    }
-  } catch (error) {
-    console.error('[NotificationSettings] Error en prueba:', error);
-    Alert.alert('Error', 'No se pudo enviar la notificación de prueba: ' + error.message);
-  }
-};
-
-  const handleRefreshStatus = async () => {
-    setLoading(true);
-    await loadSettings();
-    setLoading(false);
-  };
-
-  const handleTestBackendEvent = async () => {
-  try {
-    setLoading(true);
-    
-    const token = await AsyncStorage.getItem('persist:auth');
-    if (!token) {
-      Alert.alert('Error', 'No hay sesión activa');
-      return;
-    }
-    
-    const authData = JSON.parse(token);
-    const authToken = authData.token ? JSON.parse(authData.token) : null;
-    
-    if (!authToken) {
-      Alert.alert('Error', 'Token no válido');
-      return;
-    }
-
-    const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.12:8080' || 'http://10.0.2.2:8080';
-    
-    // Crear evento de prueba
-    const response = await fetch(`${API_URL}/api/test/create-test-event`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (response.ok) {
-      Alert.alert(
-        '✅ Evento Creado',
-        'Evento de prueba creado en el backend. Espera ~30 segundos y debería aparecer una notificación.',
-        [{ text: 'OK' }]
-      );
-      
-      // Hacer polling inmediato
-      setTimeout(async () => {
-        const pollResponse = await fetch(`${API_URL}/notifications/poll`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-          },
-        });
+      if (response.ok) {
+        const result = await response.json();
+        const eventCount = result.data?.length || 0;
         
-        const result = await pollResponse.json();
-        console.log('[Test] Eventos después de crear:', result);
-      }, 2000);
-    } else {
-      Alert.alert('Error', 'No se pudo crear el evento de prueba');
+        Alert.alert(
+          '📡 Polling Exitoso',
+          `Eventos pendientes en el backend: ${eventCount}\n\n` +
+          `Si hay eventos, deberías recibir notificaciones en unos segundos.`,
+          [{ text: 'OK' }]
+        );
+
+        console.log('[Test] Eventos recibidos:', result.data);
+      } else {
+        Alert.alert('Error', `Error del servidor: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('[NotificationSettings] Error en test polling:', error);
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('[NotificationSettings] Error creando evento:', error);
-    Alert.alert('Error', error.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -303,14 +347,36 @@ export default function NotificationSettingsScreen() {
           <Text style={styles.infoLabel}>Notificaciones sin leer:</Text>
           <Text style={styles.infoValue}>{unreadCount}</Text>
         </View>
+
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Notificaciones programadas:</Text>
+          <Text style={styles.infoValue}>{scheduledCount}</Text>
+        </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Acciones</Text>
+        <Text style={styles.sectionTitle}>Pruebas</Text>
 
         <TouchableOpacity style={styles.button} onPress={handleTestNotification}>
           <Ionicons name="notifications-outline" size={20} color="#fff" />
-          <Text style={styles.buttonText}>Enviar Notificación de Prueba</Text>
+          <Text style={styles.buttonText}>Enviar Notificaciones de Prueba</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, styles.buttonInfo]}
+          onPress={handleViewScheduled}
+        >
+          <Ionicons name="list-outline" size={20} color="#fff" />
+          <Text style={styles.buttonText}>Ver Notificaciones Programadas</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, styles.buttonWarning]}
+          onPress={handleTestBackendPoll}
+          disabled={loading}
+        >
+          <Ionicons name="cloud-download-outline" size={20} color="#fff" />
+          <Text style={styles.buttonText}>Probar Long Polling</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -320,6 +386,14 @@ export default function NotificationSettingsScreen() {
         >
           <Ionicons name="refresh-outline" size={20} color="#fff" />
           <Text style={styles.buttonText}>Actualizar Estado</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, styles.buttonDanger]}
+          onPress={handleCancelAll}
+        >
+          <Ionicons name="trash-outline" size={20} color="#fff" />
+          <Text style={styles.buttonText}>Cancelar Todas</Text>
         </TouchableOpacity>
       </View>
 
@@ -436,6 +510,15 @@ const styles = StyleSheet.create({
   },
   buttonSecondary: {
     backgroundColor: '#757575',
+  },
+  buttonInfo: {
+    backgroundColor: '#2196F3',
+  },
+  buttonWarning: {
+    backgroundColor: '#FF9800',
+  },
+  buttonDanger: {
+    backgroundColor: '#F44336',
   },
   buttonText: {
     color: 'white',
