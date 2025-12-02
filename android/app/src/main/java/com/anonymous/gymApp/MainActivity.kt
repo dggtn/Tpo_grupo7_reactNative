@@ -2,6 +2,7 @@ package com.anonymous.gymApp
 
 import android.os.Build
 import android.os.Bundle
+import com.anonymous.gymApp.BuildConfig
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

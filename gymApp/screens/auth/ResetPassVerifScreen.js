@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   View,
@@ -9,88 +9,50 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Modal,
-  ScrollView
+  ScrollView,
 } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  verifyCode,
-  resendCode,
-  clearError,
-  selectAuthLoading,
-  selectAuthError,
-  clearPendingEmail,
-} from '../../../store/slices/authSlice';
 import { VALIDATION } from '../../../config/constants';
 import {
   showErrorToast,
   showSuccessToast,
   showInfoToast,
 } from '../../../utils/toastUtils';
+import { API_BASE_URL } from '../config/constants';
 
-const RESEND_COOLDOWN = 120; // 2 minutos en segundos
-const CODE_EXPIRATION = 600; // 10 minutos en segundos
+const API_URL = API_BASE_URL;
+const RESEND_COOLDOWN = 120; // 2 minutos
+const CODE_EXPIRATION = 900; // 15 minutos
 
-export default function VerificationScreen({ navigation, route }) {
-  const dispatch = useDispatch();
-  const isLoading = useSelector(selectAuthLoading);
-  const error = useSelector(selectAuthError);
-
+export default function ResetPassVerifScreen({ navigation, route }) {
   const { email } = route.params;
   const [code, setCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  const [showExpiredDialog, setShowExpiredDialog] = useState(false);
   
-  // Estados para el contador
+  // Contadores
   const [resendCountdown, setResendCountdown] = useState(RESEND_COOLDOWN);
   const [canResend, setCanResend] = useState(false);
   const [codeExpiration, setCodeExpiration] = useState(CODE_EXPIRATION);
   const [isCodeExpired, setIsCodeExpired] = useState(false);
-  
-  const resendTimerRef = useRef(null);
-  const expirationTimerRef = useRef(null);
 
   useEffect(() => {
-    console.log('[VerificationScreen] 📧 Email para verificar:', email);
-    
-    // Iniciar contadores al montar
     startResendTimer();
     startExpirationTimer();
     
-    // Cleanup al desmontar
     return () => {
-      if (resendTimerRef.current) clearInterval(resendTimerRef.current);
-      if (expirationTimerRef.current) clearInterval(expirationTimerRef.current);
+      // Cleanup timers
     };
   }, []);
 
-  useEffect(() => {
-    if (error) {
-      console.log('[VerificationScreen] ❌ Error detectado:', error);
-      
-      if (error.includes('expirado completamente') || error.includes('iniciar el proceso')) {
-        setShowExpiredDialog(true);
-      } else {
-        showErrorToast('Error', error);
-      }
-      dispatch(clearError());
-    }
-  }, [error]);
-
-  // Contador para reenvío (2 minutos)
   const startResendTimer = () => {
     setResendCountdown(RESEND_COOLDOWN);
     setCanResend(false);
     
-    if (resendTimerRef.current) {
-      clearInterval(resendTimerRef.current);
-    }
-    
-    resendTimerRef.current = setInterval(() => {
+    const interval = setInterval(() => {
       setResendCountdown((prev) => {
         if (prev <= 1) {
-          clearInterval(resendTimerRef.current);
+          clearInterval(interval);
           setCanResend(true);
           return 0;
         }
@@ -99,21 +61,16 @@ export default function VerificationScreen({ navigation, route }) {
     }, 1000);
   };
 
-  // Contador para expiración del código (10 minutos)
   const startExpirationTimer = () => {
     setCodeExpiration(CODE_EXPIRATION);
     setIsCodeExpired(false);
     
-    if (expirationTimerRef.current) {
-      clearInterval(expirationTimerRef.current);
-    }
-    
-    expirationTimerRef.current = setInterval(() => {
+    const interval = setInterval(() => {
       setCodeExpiration((prev) => {
         if (prev <= 1) {
-          clearInterval(expirationTimerRef.current);
+          clearInterval(interval);
           setIsCodeExpired(true);
-          showWarningToast('Código Expirado', 'Debes solicitar un nuevo código');
+          showInfoToast('Código Expirado', 'Solicita un nuevo código');
           return 0;
         }
         return prev - 1;
@@ -121,16 +78,15 @@ export default function VerificationScreen({ navigation, route }) {
     }, 1000);
   };
 
-  // Formatear tiempo en MM:SS
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleVerify = async () => {
+  const handleVerifyCode = async () => {
     if (isCodeExpired) {
-      showErrorToast('Código Expirado', 'Debes solicitar un nuevo código');
+      showErrorToast('Código Expirado', 'Solicita un nuevo código');
       return;
     }
 
@@ -144,83 +100,80 @@ export default function VerificationScreen({ navigation, route }) {
       return;
     }
 
+    setIsLoading(true);
     try {
-      console.log('[VerificationScreen] 🔐 Verificando código para:', email);
-      await dispatch(verifyCode({ email, code })).unwrap();
+      console.log('[ResetVerification] 🔐 Verificando código para:', email);
 
-      console.log('[VerificationScreen] ✅ Verificación exitosa');
-      dispatch(clearPendingEmail());
-      
-      // Limpiar timers
-      if (resendTimerRef.current) clearInterval(resendTimerRef.current);
-      if (expirationTimerRef.current) clearInterval(expirationTimerRef.current);
-      
-      showSuccessToast('¡Registro Exitoso!', 'Tu cuenta ha sido verificada correctamente');
-      
-      setTimeout(() => {
-        navigation.navigate('Login', { email });
-      }, 1500);
-    } catch (err) {
-      console.error('[VerificationScreen] ❌ Error en verificación:', err);
+      const response = await fetch(`${API_URL}/auth/verify-reset-code`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email, 
+          code 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.ok) {
+        console.log('[ResetVerification] ✅ Código verificado');
+        showSuccessToast('Código Verificado', 'Ahora puedes cambiar tu contraseña');
+        
+        // Navegar a pantalla de nueva contraseña
+        setTimeout(() => {
+          navigation.navigate('NewPassword', { email, code });
+        }, 1500);
+      } else {
+        console.error('[ResetVerification] ❌ Error:', data.error);
+        showErrorToast('Error', data.error || 'Código inválido');
+      }
+    } catch (error) {
+      console.error('[ResetVerification] ❌ Error de red:', error);
+      showErrorToast('Error de Conexión', 'Verifica tu internet');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleResendCode = async () => {
     if (!canResend) {
       showInfoToast(
-        'Espera un momento', 
+        'Espera un momento',
         `Podrás reenviar el código en ${formatTime(resendCountdown)}`
       );
       return;
     }
 
-    if (!email) {
-      showErrorToast('Error', 'Email no disponible');
-      return;
-    }
-
     setResendLoading(true);
     try {
-      console.log('[VerificationScreen] 📧 Reenviando código a:', email);
-      await dispatch(resendCode(email)).unwrap();
-      
-      showSuccessToast('Código Reenviado', 'Se ha enviado un nuevo código a tu email');
-      setCode('');
-      
-      // Reiniciar ambos contadores
-      startResendTimer();
-      startExpirationTimer();
-      
-    } catch (err) {
-      console.error('[VerificationScreen] ❌ Error reenviando código:', err);
-      
-      if (err.includes('expirado completamente') || err.includes('iniciar el proceso')) {
-        setShowExpiredDialog(true);
+      console.log('[ResetVerification] 📧 Reenviando código a:', email);
+
+      const response = await fetch(`${API_URL}/auth/resend-reset-code`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (data.ok) {
+        showSuccessToast('Código Reenviado', 'Revisa tu email');
+        setCode('');
+        startResendTimer();
+        startExpirationTimer();
+      } else {
+        showErrorToast('Error', data.error || 'No se pudo reenviar el código');
       }
+    } catch (error) {
+      console.error('[ResetVerification] ❌ Error:', error);
+      showErrorToast('Error de Conexión', 'Verifica tu internet');
     } finally {
       setResendLoading(false);
     }
-  };
-
-  const handleExpiredAction = (action) => {
-    setShowExpiredDialog(false);
-    dispatch(clearPendingEmail());
-    
-    // Limpiar timers
-    if (resendTimerRef.current) clearInterval(resendTimerRef.current);
-    if (expirationTimerRef.current) clearInterval(expirationTimerRef.current);
-    
-    if (action === 'register') {
-      console.log('[VerificationScreen] 🔄 Navegando a Register por expiración');
-      navigation.navigate('Register', { email });
-    } else {
-      console.log('[VerificationScreen] 🔄 Navegando a Login');
-      navigation.navigate('Login');
-    }
-  };
-
-  const showWarningToast = (title, message) => {
-    showInfoToast(title, message);
   };
 
   return (
@@ -234,16 +187,16 @@ export default function VerificationScreen({ navigation, route }) {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView 
-                   contentContainerStyle={styles.scrollContent}
-                   keyboardShouldPersistTaps="handled"
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
         >
         <View style={styles.content}>
           <View style={styles.iconContainer}>
-            <Ionicons name="mail-outline" size={80} color="#c25a06be" />
+            <Ionicons name="shield-checkmark-outline" size={80} color="#c25a06be" />
           </View>
 
-          <Text style={styles.title}>Confirmar Email</Text>
+          <Text style={styles.title}>Verificar Código</Text>
 
           <View style={styles.emailContainer}>
             <Text style={styles.emailLabel}>Código enviado a:</Text>
@@ -254,27 +207,28 @@ export default function VerificationScreen({ navigation, route }) {
             Ingresa el código de 4 dígitos que te enviamos por email
           </Text>
 
-          {/* Indicador de expiración del código */}
+          {/* Timer de expiración */}
           <View style={[
-            styles.timerContainer, 
+            styles.timerContainer,
             isCodeExpired && styles.timerContainerExpired
           ]}>
-            <Ionicons 
-              name={isCodeExpired ? "alert-circle" : "time-outline"} 
-              size={18} 
-              color={isCodeExpired ? "#f44336" : "#40b88a"} 
+            <Ionicons
+              name={isCodeExpired ? "alert-circle" : "time-outline"}
+              size={18}
+              color={isCodeExpired ? "#f44336" : "#40b88a"}
             />
             <Text style={[
               styles.timerText,
               isCodeExpired && styles.timerTextExpired
             ]}>
-              {isCodeExpired 
-                ? 'Código expirado' 
+              {isCodeExpired
+                ? 'Código expirado'
                 : `Código válido por: ${formatTime(codeExpiration)}`
               }
             </Text>
           </View>
 
+          {/* Input de código */}
           <TextInput
             style={[
               styles.codeInput,
@@ -291,12 +245,13 @@ export default function VerificationScreen({ navigation, route }) {
             autoFocus={true}
           />
 
+          {/* Botón verificar */}
           <TouchableOpacity
             style={[
-              styles.verifyButton, 
+              styles.verifyButton,
               (isLoading || isCodeExpired) && styles.buttonDisabled
             ]}
-            onPress={handleVerify}
+            onPress={handleVerifyCode}
             disabled={isLoading || isCodeExpired}
           >
             {isLoading ? (
@@ -309,10 +264,10 @@ export default function VerificationScreen({ navigation, route }) {
             )}
           </TouchableOpacity>
 
-          {/* Botón de reenvío con contador */}
+          {/* Botón reenviar */}
           <TouchableOpacity
             style={[
-              styles.resendButton, 
+              styles.resendButton,
               (!canResend || isLoading || resendLoading) && styles.resendButtonDisabled
             ]}
             onPress={handleResendCode}
@@ -322,17 +277,17 @@ export default function VerificationScreen({ navigation, route }) {
               <ActivityIndicator color="#e67e10" />
             ) : (
               <>
-                <Ionicons 
-                  name={canResend ? "refresh-outline" : "time-outline"} 
-                  size={20} 
-                  color={canResend ? "#fff" : "#999"} 
+                <Ionicons
+                  name={canResend ? "refresh-outline" : "time-outline"}
+                  size={20}
+                  color={canResend ? "#fff" : "#999"}
                 />
                 <Text style={[
                   styles.resendButtonText,
                   !canResend && styles.resendButtonTextDisabled
                 ]}>
-                  {canResend 
-                    ? 'Reenviar Código' 
+                  {canResend
+                    ? 'Reenviar Código'
                     : `Reenviar en ${formatTime(resendCountdown)}`
                   }
                 </Text>
@@ -340,53 +295,14 @@ export default function VerificationScreen({ navigation, route }) {
             )}
           </TouchableOpacity>
 
-          {/* Información adicional */}
+          {/* Notas */}
           <View style={styles.noteContainer}>
             <Ionicons name="information-circle-outline" size={18} color="#666" />
             <Text style={styles.note}>
-              El código expira en 10 minutos. Puedes solicitar uno nuevo después de 2 minutos.
-            </Text>
-          </View>
-
-          <View style={styles.noteContainer}>
-            <Ionicons name="mail-outline" size={18} color="#666" />
-            <Text style={styles.note}>
-              Si no recibes el código, verifica tu carpeta de spam.
+              El código expira en 15 minutos. Puedes solicitar uno nuevo después de 2 minutos.
             </Text>
           </View>
         </View>
-
-        {/* Expired Dialog */}
-        <Modal
-          visible={showExpiredDialog}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setShowExpiredDialog(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Ionicons name="time-outline" size={64} color="#f44336" />
-              <Text style={styles.modalTitle}>Registro Expirado</Text>
-              <Text style={styles.modalMessage}>
-                Tu registro ha expirado completamente. ¿Deseas iniciar un nuevo registro?
-              </Text>
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.modalButtonSecondary}
-                  onPress={() => handleExpiredAction('login')}
-                >
-                  <Text style={styles.modalButtonSecondaryText}>Volver al Login</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalButtonPrimary}
-                  onPress={() => handleExpiredAction('register')}
-                >
-                  <Text style={styles.modalButtonPrimaryText}>Sí, registrarme</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -397,7 +313,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollContent: {
+ scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     
@@ -549,7 +465,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     maxWidth: 320,
     gap: 8,
-    marginBottom: 12,
   },
   note: {
     flex: 1,
@@ -560,71 +475,5 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 28,
-    alignItems: 'center',
-    marginHorizontal: 20,
-    maxWidth: 400,
-    width: '90%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginTop: 16,
-    marginBottom: 12,
-    textAlign: 'center',
-    color: '#121212',
-  },
-  modalMessage: {
-    fontSize: 15,
-    textAlign: 'center',
-    color: '#666',
-    marginBottom: 24,
-    lineHeight: 22,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-  },
-  modalButtonPrimary: {
-    flex: 1,
-    backgroundColor: '#40b88a',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  modalButtonPrimaryText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  modalButtonSecondary: {
-    flex: 1,
-    backgroundColor: '#e0e0e0',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  modalButtonSecondaryText: {
-    color: '#666',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });

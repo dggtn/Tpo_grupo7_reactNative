@@ -1,38 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState,} from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 
-function DropdownComponent() {
+function DropdownComponent({items,placeholder,label, onValueChange}) {
   const [value, setValue] = useState(null);
-  const [isFocus, setIsFocus] = useState(false);
-  const [sedes, setSedes] = useState([]);
-  const url = process.env.EXPO_PUBLIC_API_URL;
-
-  const getSedes = async () => {
-    try {
-      const response = await fetch(url + "/headquarters/allHeadquarters", {
-        method: "GET",
-      });
-
-      const json = await response.json();
-      setSedes(json.data.map((sede) => ({ label: sede.name, value: sede.id })));
-    } catch (error) {
-      console.log("ERROR, ", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    getSedes();
-  }, []);
-
-  const Sede = ({ address }) => <Text style={styles.title}>{address}</Text>;
+  const [isFocus, setIsFocus] = useState(false);  
 
   const renderLabel = () => {
     if (value || isFocus) {
       return (
-        <Text style={[styles.label, isFocus && { color: "blue" }]}>Sede</Text>
+        <Text style={[styles.label, isFocus && { color: "blue" }]}>{label}</Text>
       );
     }
     return null;
@@ -47,20 +24,20 @@ function DropdownComponent() {
         selectedTextStyle={styles.selectedTextStyle}
         inputSearchStyle={styles.inputSearchStyle}
         iconStyle={styles.iconStyle}
-        data={sedes}
+        data={items}
         search
         maxHeight={300}
-        labelField="label"
+        labelField="label" 
         valueField="value"
-        placeholder={!isFocus ? "Seleccionar sede" : "..."}
+        placeholder={!isFocus ? placeholder : "..."}
         value={value}
         onFocus={() => setIsFocus(true)}
         onBlur={() => setIsFocus(false)}
         onChange={(item) => {
           setValue(item.value);
           setIsFocus(false);
+          onValueChange(item.value);
         }}
-        renderLeftIcon={() => <Text style={styles.icon}>🔍</Text>}
       />
     </View>
   );
@@ -70,27 +47,33 @@ export default DropdownComponent;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "white",
-    padding: 16,
+    padding: 4,
   },
   dropdown: {
-    height: 50,
+    width: 110,
     borderColor: "gray",
     borderWidth: 0.5,
-    borderRadius: 8,
+    borderRadius: 3,
+    borderColor: "skyblue",
+    borderWidth: 1,
+    height: 40,
     paddingHorizontal: 8,
+    backgroundColor: "skyblue",
+    justifyContent: "center",
+    fontFamily: "Arial",
+    fontStyle: "italic",
+    color: "white",
+    fontWeight: "bold",
   },
   icon: {
     marginRight: 5,
   },
   label: {
-    position: "absolute",
-    backgroundColor: "white",
-    left: 22,
+    backgroundColor: "skyblue",
     top: 8,
     zIndex: 999,
-    paddingHorizontal: 8,
-    fontSize: 14,
+    fontSize: 10,
+    borderRadius: 3,
   },
   placeholderStyle: {
     fontSize: 16,

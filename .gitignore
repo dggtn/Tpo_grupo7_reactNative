@@ -46,7 +46,6 @@ dist/
 web-build/
 
 # Environment variables
-.env
 .env.local
 .env.production
 
@@ -63,3 +62,6 @@ coverage/
 *.swo
 *~
 .tmp/
+
+# Android
+android/

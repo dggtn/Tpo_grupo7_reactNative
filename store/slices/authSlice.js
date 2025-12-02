@@ -64,16 +64,40 @@ export const checkPendingRegistration = createAsyncThunk(
 
 export const logout = createAsyncThunk(
   'auth/logout',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, getState, dispatch }) => {
     try {
-      await authAPI.logout();
+      console.log('[authSlice.logout] 🚪 Iniciando logout...');
+      
+      const state = getState();
+      const token = state.auth.token;
+      
+      console.log('[authSlice.logout] 🔑 Token presente:', !!token);
+      
+      // Importar dinámicamente para evitar circular dependency
+      const { resetBiometricOnLogout } = require('./biometricSlice');
+      
+      // 1. Limpiar biometría ANTES de hacer logout en backend
+      console.log('[authSlice.logout] 🔒 Limpiando estado biométrico...');
+      dispatch(resetBiometricOnLogout());
+      
+      // 2. Llamar al backend si hay token
+      if (token) {
+        console.log('[authSlice.logout] 📡 Enviando request al backend...');
+        await authAPI.logout(token);
+        console.log('[authSlice.logout] ✅ Logout exitoso en backend');
+      } else {
+        console.log('[authSlice.logout] ⚠️ No hay token, solo logout local');
+      }
+      
       return null;
     } catch (error) {
-      // Siempre hacer logout local aunque falle el servidor
+      console.error('[authSlice.logout] ❌ Error:', error);
+      console.log('[authSlice.logout] 🔄 Continuando con logout local');
       return null;
     }
   }
 );
+
 
 // Slice
 const authSlice = createSlice({
@@ -84,8 +108,9 @@ const authSlice = createSlice({
     isLoading: false,
     error: null,
     loginTime: null,
-    pendingEmail: null, // Email con registro pendiente
+    pendingEmail: null,
     registrationInProgress: false,
+    justLoggedIn: false, // Flag para saber si acaba de loguearse
   },
   reducers: {
     clearError: (state) => {
@@ -96,6 +121,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.loginTime = null;
       state.error = null;
+      state.justLoggedIn = false; 
     },
     setPendingEmail: (state, action) => {
       state.pendingEmail = action.payload;
@@ -105,6 +131,10 @@ const authSlice = createSlice({
     },
     setRegistrationInProgress: (state, action) => {
       state.registrationInProgress = action.payload;
+    },
+    // Marcar que ya se procesó el login
+    clearJustLoggedIn: (state) => {
+      state.justLoggedIn = false;
     },
   },
   extraReducers: (builder) => {
@@ -120,12 +150,14 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.loginTime = Date.now();
         state.error = null;
+        state.justLoggedIn = true; //  Marcar que acaba de loguearse
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
         state.isAuthenticated = false;
         state.token = null;
+        state.justLoggedIn = false;
       })
       // Register
       .addCase(register.pending, (state) => {
@@ -195,15 +227,16 @@ const authSlice = createSlice({
         state.loginTime = null;
         state.pendingEmail = null;
         state.registrationInProgress = false;
+        state.justLoggedIn = false; 
       })
       .addCase(logout.rejected, (state) => {
-        // Limpiar de todos modos
         state.token = null;
         state.isAuthenticated = false;
         state.isLoading = false;
         state.loginTime = null;
         state.pendingEmail = null;
         state.registrationInProgress = false;
+        state.justLoggedIn = false; 
       });
   },
 });
@@ -213,7 +246,8 @@ export const {
   clearAuth, 
   setPendingEmail, 
   clearPendingEmail,
-  setRegistrationInProgress 
+  setRegistrationInProgress,
+  clearJustLoggedIn, 
 } = authSlice.actions;
 
 // Selectors
@@ -225,5 +259,6 @@ export const selectAuthError = (state) => state.auth.error;
 export const selectLoginTime = (state) => state.auth.loginTime;
 export const selectPendingEmail = (state) => state.auth.pendingEmail;
 export const selectRegistrationInProgress = (state) => state.auth.registrationInProgress;
+export const selectJustLoggedIn = (state) => state.auth.justLoggedIn; 
 
 export default authSlice.reducer;
