@@ -7,6 +7,7 @@ import {
   StyleSheet,
   StatusBar,
   TouchableOpacity,
+  onPress,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {  useSelector } from "react-redux";

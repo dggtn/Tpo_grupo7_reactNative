@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { ActivityIndicator, Text, View, StyleSheet, ScrollView, Alert, Linking } from "react-native";
 import MapView, { Marker } from "react-native-maps";
@@ -8,6 +9,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { API_BASE_URL } from "../../config/constants";
 
 const API_URL = API_BASE_URL;
+=======
+import { ActivityIndicator, Text, View, StyleSheet,ScrollView } from "react-native";
+import { useEffect, useState } from "react";
+import MapView from "react-native-maps";
+import { Marker } from "react-native-maps";
+import { Button } from "react-native-paper";
+>>>>>>> 6f9e9ee99e1b03a7199dc0b3c62afd333f418bac
 
 export default function DetalleCursoScreen({ route }) {
   const idCurso = route?.params?.idCurso;
@@ -171,6 +179,7 @@ export default function DetalleCursoScreen({ route }) {
                 end={{ x: 1, y: 1 }}
               >
     <View>
+<<<<<<< HEAD
       <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
         <View style={styles.container}>
           <Text style={styles.item}>Curso: {detalleCursos?.name ?? "N/D"}</Text>
@@ -179,6 +188,30 @@ export default function DetalleCursoScreen({ route }) {
           <Text style={styles.item}>Duración: {detalleCursos?.length ?? detalleCursos?.duracion ?? "N/D"}</Text>
           <Text style={styles.item}>Precio: {detalleCursos?.price != null ? `$${detalleCursos.price}` : "N/D"}</Text>
           <Text style={styles.item}>Profesor: {teacherLabel}</Text>
+=======
+      {isLoading ? (
+        <ActivityIndicator />
+      ) : (
+        <ScrollView>
+          <View style={styles.container}>
+            <Text style={styles.item}>Curso: {detalleCursos.name}</Text>
+            <Text style={styles.item}>
+              Fecha de inicio: {detalleCursos.fechaInicio}
+            </Text>
+            <Text style={styles.item}>Fecha fin: {detalleCursos.fechaFin}</Text>
+            <Text style={styles.item}>Duración: {detalleCursos.length}</Text>
+            <Text style={styles.item}>Precio: {detalleCursos.price}</Text>
+            <Text style={styles.item}>
+              Profesor: {detalleCursos.teachers.name}
+            </Text>
+            <Text style={styles.item}>
+              Ubicacion: {detalleCursos.shifts[0].clase.sedes[0].address}
+            </Text>
+            <Button style={styles.btn} mode="contained">
+            Cómo llegar a la sede: {detalleCursos.shifts[0].clase.sedes[0].name}
+            </Button>
+            <Text style={styles.item}>Ubicacion en el mapa:</Text>
+>>>>>>> 6f9e9ee99e1b03a7199dc0b3c62afd333f418bac
 
           <Text style={styles.item}>Ubicacion: {address}</Text>
           <Button style={styles.btn} mode="contained" onPress={onComoLlegar}>
@@ -208,10 +241,18 @@ const styles = StyleSheet.create({
     marginLeft: 20,
   },
   item: {
+<<<<<<< HEAD
     fontSize: 20,
     fontWeight: 'bold',
     color: '#ffebcd',
     marginTop: 10,
+=======
+    fontSize: 25,
+    borderRadius: 10,
+    fontWeight: "bold",
+    fontStyle: "italic",
+    color: "#0e6c5eff",
+>>>>>>> 6f9e9ee99e1b03a7199dc0b3c62afd333f418bac
   },
   btn:{
     marginTop:10,
