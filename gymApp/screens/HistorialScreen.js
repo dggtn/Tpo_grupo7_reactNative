@@ -120,6 +120,7 @@ export default function HistorialScreen() {
     const nombreCurso = item?.nombreCurso ?? "Curso";
     const estado = item?.estadoReserva ?? "N/D";
     const diaClase = item?.diaClase ?? null;
+    const horaClase = item?.horaClase ?? null;
     const sede = item?.sede ?? null;
     const calificado = !!item?.rating
 
@@ -128,7 +129,10 @@ export default function HistorialScreen() {
       <View style={styles.card}>
         <Text style={styles.curso}>{nombreCurso}</Text>
         {diaClase ? (
-          <Text style={styles.linea}>Día / Horario: {diaClase}</Text>
+          <Text style={styles.linea}>Día: {diaClase}</Text>
+        ) : null}
+        {horaClase ? (
+          <Text style={styles.linea}>Horario: {horaClase}</Text>
         ) : null}
         {sede ? <Text style={styles.linea}>Sede: {sede}</Text> : null}
         <Text style={[styles.linea, styles.estado]}>Estado: {estado}</Text>
