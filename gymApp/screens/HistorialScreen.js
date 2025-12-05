@@ -12,6 +12,7 @@ import {
   Pressable,
   TextInput
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { useSelector } from "react-redux";
 import { selectToken } from "../../store/slices/authSlice";
 import { Button } from "react-native-paper";
@@ -42,7 +43,7 @@ export default function HistorialScreen() {
   const [selectedCourse, setSelectedCourse] = useState({})
   
 
-  // 👉 token desde Redux (igual que en MisReservas / Checkin / DetalleCurso)
+  //token desde Redux (igual que en MisReservas / Checkin / DetalleCurso)
   const token = useSelector(selectToken);
 
   const load = useCallback(async () => {
@@ -77,9 +78,11 @@ export default function HistorialScreen() {
     }
   }, [token]);
 
-  useEffect(() => {
-    load();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const openModal = (course) => {
     setRating(0)

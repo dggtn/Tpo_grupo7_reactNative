@@ -10,9 +10,20 @@ const API_URL = API_BASE_URL;
 
 export default function CheckinScreen() {
   const [permission, requestPermission] = useCameraPermissions();
+
+  // controla si la cámara está escaneando o no
   const [scanned, setScanned] = useState(false);
 
-  // 👉 token sacado del store, igual que en DetalleCurso / MisReservas
+  // info del QR válido
+  const [preview, setPreview] = useState(null); // { shiftId, ...más datos si querés }
+
+  // error de QR / token / etc
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  // mientras se hace el POST de checkin
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // token desde Redux
   const token = useSelector(selectToken);
 
   useEffect(() => {
@@ -22,38 +33,62 @@ export default function CheckinScreen() {
     }
   }, [permission, requestPermission]);
 
-  const handleBarCodeScanned = async ({ data }) => {
-    if (scanned) return;
-    setScanned(true);
+  const resetScan = () => {
+    setScanned(false);
+    setPreview(null);
+    setErrorMsg(null);
+    setIsSubmitting(false);
+  };
 
-    // data es lo que viene en el QR. Si el QR tiene solo el número, esto alcanza.
-    // Si en algún momento el QR es tipo "shiftId=123", acá se podría parsear.
+  const handleBarCodeScanned = async ({ data }) => {
+    if (scanned) return; // ya estamos procesando algo
+
+    setScanned(true);      // congela la cámara (ya no se vuelve a escanear)
+    setErrorMsg(null);
+    setPreview(null);
+
     const raw = String(data ?? "").trim();
     const shiftId = Number(raw);
 
     if (!shiftId) {
-      Alert.alert("QR inválido", `No se encontró un shiftId numérico en: ${raw}`);
-      setScanned(false);
+      setErrorMsg(`QR inválido. No se encontró un id de clase válido: ${raw}`);
       return;
     }
 
     if (!token) {
-      Alert.alert(
-        "Sesión",
-        "No se encontró token de autenticación. Volvé a iniciar sesión."
-      );
-      setScanned(false);
+      setErrorMsg("No se encontró token de autenticación. Volvé a iniciar sesión.");
+      return;
+    }
+
+    // Si quisieras traer más datos del turno, acá podrías hacer un GET
+    // por ejemplo: GET /shifts/{shiftId} y guardar nombreCurso, diaClase, etc.
+    // Por ahora mostramos algo básico.
+    setPreview({
+      shiftId,
+      // nombreCurso: "...",
+      // diaClase: "...",
+      // sede: "..."
+    });
+  };
+
+  const confirmarCheckin = async () => {
+    if (!preview?.shiftId) {
+      Alert.alert("Check-in", "No se encontró el turno a confirmar.");
+      return;
+    }
+    if (!token) {
+      Alert.alert("Sesión", "No se encontró token. Volvé a iniciar sesión.");
+      resetScan();
       return;
     }
 
     try {
-      console.log("CHECKIN shiftId:", shiftId);
-      console.log("CHECKIN token (primeros chars):", token.slice(0, 20));
+      setIsSubmitting(true);
 
-      const res = await fetch(`${API_URL}/reservations/checkin/${shiftId}`, {
+      const res = await fetch(`${API_URL}/reservations/checkin/${preview.shiftId}`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`, // 👈 misma lógica que en las otras pantallas
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -65,11 +100,13 @@ export default function CheckinScreen() {
       }
 
       Alert.alert("Check-in", "Asistencia registrada correctamente.");
+      resetScan(); // listo, volvemos a modo escaneo por si querés pasar otro
     } catch (e) {
       Alert.alert("Error", e.message || "No se pudo registrar el check-in.");
+      // después de error te dejo en la pantalla de preview/error
+      // para que el usuario decida “Volver a escanear”.
     } finally {
-      // después de un ratito permitimos escanear de nuevo
-      setTimeout(() => setScanned(false), 1500);
+      setIsSubmitting(false);
     }
   };
 
@@ -84,18 +121,74 @@ export default function CheckinScreen() {
     );
   }
 
+  const mostrarCamera = !scanned; // si scanned=true, escondemos la cámara
+
   return (
     <View style={{ flex: 1 }}>
-      <CameraView
-        style={{ flex: 1 }}
-        facing="back"
-        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-        onBarcodeScanned={handleBarCodeScanned}
-      />
+      {mostrarCamera && (
+        <CameraView
+          style={{ flex: 1 }}
+          facing="back"
+          barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+          onBarcodeScanned={handleBarCodeScanned}
+        />
+      )}
 
+      {/* Overlay de resultado (error o preview) */}
       {scanned && (
-        <View style={styles.overlay}>
-          <Text style={styles.scanText}>Procesando...</Text>
+        <View style={styles.overlayContainer}>
+          <View style={styles.overlayCard}>
+            {errorMsg ? (
+              <>
+                <Text style={styles.title}>QR inválido</Text>
+                <Text style={styles.text}>{errorMsg}</Text>
+                <Button
+                  mode="contained"
+                  style={{ marginTop: 16 }}
+                  onPress={resetScan}
+                >
+                  Volver a escanear
+                </Button>
+              </>
+            ) : (
+              <>
+                <Text style={styles.title}>Confirmar check-in</Text>
+                <Text style={styles.text}>
+                  Vas a registrar asistencia para el turno #{preview?.shiftId}.
+                </Text>
+
+                {/* Si después traés más datos del turno, podés mostrarlos acá */}
+                {/* {preview?.nombreCurso && (
+                  <Text style={styles.text}>Curso: {preview.nombreCurso}</Text>
+                )}
+                {preview?.diaClase && (
+                  <Text style={styles.text}>Día / Horario: {preview.diaClase}</Text>
+                )}
+                {preview?.sede && (
+                  <Text style={styles.text}>Sede: {preview.sede}</Text>
+                )} */}
+
+                <Button
+                  mode="contained"
+                  style={{ marginTop: 16 }}
+                  loading={isSubmitting}
+                  disabled={isSubmitting}
+                  onPress={confirmarCheckin}
+                >
+                  Confirmar check-in
+                </Button>
+
+                <Button
+                  mode="text"
+                  style={{ marginTop: 8 }}
+                  disabled={isSubmitting}
+                  onPress={resetScan}
+                >
+                  Cancelar / Volver a escanear
+                </Button>
+              </>
+            )}
+          </View>
         </View>
       )}
     </View>
@@ -108,13 +201,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  overlay: {
-    position: "absolute",
-    bottom: 100,
-    alignSelf: "center",
-    backgroundColor: "rgba(0,0,0,0.6)",
-    padding: 16,
-    borderRadius: 10,
+  overlayContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  scanText: { color: "white", fontSize: 18 },
+  overlayCard: {
+    width: "85%",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+    elevation: 5,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 8,
+    color: "#0e6c5e",
+  },
+  text: {
+    fontSize: 14,
+    color: "#333",
+  },
 });
