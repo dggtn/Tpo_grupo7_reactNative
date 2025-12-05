@@ -96,7 +96,8 @@ export default function CheckinScreen() {
 
       if (!res.ok) {
         console.log("CHECKIN ERROR", res.status, js);
-        throw new Error(js?.message || `Error ${res.status}`);
+        const msg = js?.error;
+        throw new Error(msg);
       }
 
       Alert.alert("Check-in", "Asistencia registrada correctamente.");
