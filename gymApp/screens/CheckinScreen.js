@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Alert } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { useNavigation } from "@react-navigation/native";
 import { Button } from "react-native-paper";
 import { useSelector } from "react-redux";
 import { selectToken } from "../../store/slices/authSlice";
@@ -10,6 +11,7 @@ const API_URL = API_BASE_URL;
 
 export default function CheckinScreen() {
   const [permission, requestPermission] = useCameraPermissions();
+  const navigation = useNavigation();
 
   // controla si la cámara está escaneando o no
   const [scanned, setScanned] = useState(false);
@@ -96,15 +98,24 @@ export default function CheckinScreen() {
 
       if (!res.ok) {
         console.log("CHECKIN ERROR", res.status, js);
-        throw new Error(js?.message || `Error ${res.status}`);
+        const msg = js?.error;
+        throw new Error(msg);
       }
 
-      Alert.alert("Check-in", "Asistencia registrada correctamente.");
-      resetScan(); // listo, volvemos a modo escaneo por si querés pasar otro
+      Alert.alert("Check-in", "Asistencia registrada correctamente.",[
+        {
+          text: "OK",
+          onPress: () => {
+            resetScan();
+            navigation.navigate("Historial"); 
+          },
+        },
+      ]);
+
     } catch (e) {
       Alert.alert("Error", e.message || "No se pudo registrar el check-in.");
-      // después de error te dejo en la pantalla de preview/error
-      // para que el usuario decida “Volver a escanear”.
+      // después de error queda en la pantalla de preview/error
+
     } finally {
       setIsSubmitting(false);
     }
@@ -157,7 +168,6 @@ export default function CheckinScreen() {
                   Vas a registrar asistencia para el turno #{preview?.shiftId}.
                 </Text>
 
-                {/* Si después traés más datos del turno, podés mostrarlos acá */}
                 {/* {preview?.nombreCurso && (
                   <Text style={styles.text}>Curso: {preview.nombreCurso}</Text>
                 )}

@@ -124,7 +124,8 @@ export default function MisReservasScreen() {
             <Text>
               Turno: #{shiftId} • Estado: {item?.estadoReserva ?? "N/D"}
             </Text>
-            {item?.diaClase && <Text>Horario: {item.diaClase}</Text>}
+            {item?.diaClase && <Text>Dia: {item.diaClase}</Text>}
+            {item?.diaClase && <Text>Horario: {item.horaClase}</Text>}
       
             {item?.cancelable && shiftId != null && (
               <Button

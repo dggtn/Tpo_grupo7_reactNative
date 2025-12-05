@@ -106,7 +106,9 @@ export default function DetalleCursoScreen({ route }) {
   
       if (!res.ok) {
         console.log("[Reserva] status", res.status, "body:", text.slice(0, 200));
-        throw new Error(data?.message || `Error ${res.status}`);
+        const backendMsg =          
+          data?.error;     
+        throw new Error(backendMsg);
       }
   
       Alert.alert("Reserva", "Reserva confirmada.");
