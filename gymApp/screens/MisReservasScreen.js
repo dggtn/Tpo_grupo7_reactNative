@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, FlatList, ActivityIndicator, Alert, RefreshControl } from "react-native";
 import { Button } from "react-native-paper";
+import { useFocusEffect } from "@react-navigation/native"; 
 import { useSelector } from "react-redux";
 import { selectToken } from "../../store/slices/authSlice";
 import { API_BASE_URL } from "../../config/constants";
@@ -57,7 +58,7 @@ export default function MisReservasScreen() {
     } catch (e) {
       const msg = (e?.message || "").toLowerCase();
     
-      // 👉 Si el back dice que no hay reservas, NO lo trato como error visible
+      // Si el back dice que no hay reservas, NO lo trato como error visible
       if (!msg.includes("no hay reservas")) {
         Alert.alert("Reservas", e.message || "No se pudo cargar tus reservas");
       }
@@ -68,9 +69,11 @@ export default function MisReservasScreen() {
     }
   }, [token]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const cancelar = async (shiftId) => {
     if (!token) {
@@ -79,7 +82,7 @@ export default function MisReservasScreen() {
     }
   
     try {
-      setCancelingId(shiftId);  // 👈 empieza el “loading” para ese turno
+      setCancelingId(shiftId);  //empieza el “loading” para ese turno
   
       const res = await fetch(`${API_URL}/reservations/cancelar/${shiftId}`, {
         method: "DELETE",
@@ -97,7 +100,7 @@ export default function MisReservasScreen() {
     } catch (e) {
       Alert.alert("Reserva", e.message || "No se pudo cancelar la reserva");
     } finally {
-      setCancelingId(null);     // 👈 se apaga el “loading”
+      setCancelingId(null);     // se apaga el “loading”
     }
   };
   
@@ -113,7 +116,7 @@ export default function MisReservasScreen() {
       refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       renderItem={({ item }) => {
         const shiftId = item?.shiftId;
-        const isCancelingThis = cancelingId === shiftId;  // 👈 está cancelando justo este
+        const isCancelingThis = cancelingId === shiftId;  //está cancelando justo este
       
         return (
           <View style={{ padding: 12, borderBottomWidth: 1, borderColor: "#eee" }}>
@@ -129,8 +132,8 @@ export default function MisReservasScreen() {
                 buttonColor="#cc3b3b"
                 onPress={() => cancelar(shiftId)}
                 style={{ marginTop: 8 }}
-                loading={isCancelingThis}   // 👈 ruedita
-                disabled={isCancelingThis}  // 👈 no se puede tocar mientras tanto
+                loading={isCancelingThis}   //ruedita
+                disabled={isCancelingThis}  //no se puede tocar mientras tanto
               >
                 Cancelar Reserva
               </Button>
